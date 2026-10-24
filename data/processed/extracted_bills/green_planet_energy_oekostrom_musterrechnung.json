@@ -1,0 +1,40 @@
+{
+  "source_file": "green_planet_energy_oekostrom_musterrechnung.pdf",
+  "page_count": 8,
+  "fields": {
+    "energy_carrier": {
+      "value": "electricity",
+      "source": "energy_bill.green_planet_energy_oekostrom_musterrechnung.pdf#carrier",
+      "confidence": "high",
+      "evidence": "Bill references Strom / Stromabrechnung"
+    },
+    "billing_period": {
+      "value": {
+        "start_date": "01.04.2024",
+        "end_date": "31.01.2025",
+        "days": 305
+      },
+      "source": "energy_bill.green_planet_energy_oekostrom_musterrechnung.pdf#period",
+      "confidence": "high",
+      "evidence": "Lieferzeitraum vom 01.04.2024 bis 31.01.2025."
+    },
+    "current_annual_cost_eur": {
+      "value": 443.48,
+      "source": "energy_bill.green_planet_energy_oekostrom_musterrechnung.pdf#cost",
+      "confidence": "high",
+      "evidence": "Gesamtbetrag 443,48 €      84,26 € 527,74 €"
+    },
+    "meter_reading_type": {
+      "value": "estimated",
+      "source": "energy_bill.green_planet_energy_oekostrom_musterrechnung.pdf#reading_type",
+      "confidence": "medium",
+      "evidence": "Rechnerische Schätzung / maschinell ermittelt"
+    },
+    "working_price_ct_per_kwh": {
+      "value": 32.4706,
+      "source": "energy_bill.green_planet_energy_oekostrom_musterrechnung.pdf#tariff",
+      "confidence": "high",
+      "evidence": "Arbeitspreis 01.04.24 - 30.09.24 578 kWh 32,4706 ct/kWh"
+    }
+  }
+}

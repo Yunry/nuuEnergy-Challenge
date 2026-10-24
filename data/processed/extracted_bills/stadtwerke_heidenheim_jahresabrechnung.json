@@ -1,0 +1,40 @@
+{
+  "source_file": "stadtwerke_heidenheim_jahresabrechnung.pdf",
+  "page_count": 12,
+  "fields": {
+    "energy_carrier": {
+      "value": "natural_gas",
+      "source": "energy_bill.stadtwerke_heidenheim_jahresabrechnung.pdf#carrier",
+      "confidence": "high",
+      "evidence": "Bill references Erdgas / Gasabrechnung"
+    },
+    "billing_period": {
+      "value": {
+        "start_date": "01.01.2022",
+        "end_date": "31.12.2022",
+        "days": 364
+      },
+      "source": "energy_bill.stadtwerke_heidenheim_jahresabrechnung.pdf#period",
+      "confidence": "high",
+      "evidence": "herzlichen Dank für Ihr Vertrauen, das Sie uns im Zeitraum vom 01.01.2022 bis 31.12.2022 erwiesen haben."
+    },
+    "annual_consumption_kwh": {
+      "value": 26708.0,
+      "source": "energy_bill.stadtwerke_heidenheim_jahresabrechnung.pdf#consumption",
+      "confidence": "high",
+      "evidence": "2.110,16 2.257,87 Gas 7 147,71 26.708 kWh"
+    },
+    "current_annual_cost_eur": {
+      "value": 840.09,
+      "source": "energy_bill.stadtwerke_heidenheim_jahresabrechnung.pdf#cost",
+      "confidence": "high",
+      "evidence": "Gesamt-Brutto 840,09€"
+    },
+    "working_price_ct_per_kwh": {
+      "value": 43.84,
+      "source": "energy_bill.stadtwerke_heidenheim_jahresabrechnung.pdf#tariff",
+      "confidence": "high",
+      "evidence": "Arbeitspreis HT 43,84 ct/kWh"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "source_file": "gvg_rhein_erft_erdgas_jahresabrechnung_2025.pdf",
+  "page_count": 3,
+  "fields": {
+    "energy_carrier": {
+      "value": "natural_gas",
+      "source": "energy_bill.gvg_rhein_erft_erdgas_jahresabrechnung_2025.pdf#carrier",
+      "confidence": "high",
+      "evidence": "Bill references Erdgas / Gasabrechnung"
+    },
+    "billing_period": {
+      "value": {
+        "start_date": "01.04.2024",
+        "end_date": "31.03.2025",
+        "days": 364
+      },
+      "source": "energy_bill.gvg_rhein_erft_erdgas_jahresabrechnung_2025.pdf#period",
+      "confidence": "high",
+      "evidence": "Abrechnungszeitraum: 01.04.2024 - 31.03.2025"
+    },
+    "annual_consumption_kwh": {
+      "value": 24858.0,
+      "source": "energy_bill.gvg_rhein_erft_erdgas_jahresabrechnung_2025.pdf#consumption",
+      "confidence": "high",
+      "evidence": "Gas 24.858 kWh  (365   )       21.242 kWh (365)  3.296,81       59,982    3.586,76371,64-    10,62-         Entlastungspaket Dezember-Soforthilfe nach EWSG"
+    },
+    "meter_reading_type": {
+      "value": "estimated",
+      "source": "energy_bill.gvg_rhein_erft_erdgas_jahresabrechnung_2025.pdf#reading_type",
+      "confidence": "medium",
+      "evidence": "Rechnerische Schätzung / maschinell ermittelt"
+    },
+    "zustandszahl_z": {
+      "value": 0.9645,
+      "source": "energy_bill.gvg_rhein_erft_erdgas_jahresabrechnung_2025.pdf#conversion",
+      "confidence": "high",
+      "evidence": "Zustandszahl 0,9645"
+    },
+    "brennwert_hs_kwh_per_m3": {
+      "value": 10.286,
+      "source": "energy_bill.gvg_rhein_erft_erdgas_jahresabrechnung_2025.pdf#conversion",
+      "confidence": "high",
+      "evidence": "brennwert 10,286"
+    }
+  }
+}

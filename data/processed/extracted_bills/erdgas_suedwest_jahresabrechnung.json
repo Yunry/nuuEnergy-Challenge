@@ -1,0 +1,12 @@
+{
+  "source_file": "erdgas_suedwest_jahresabrechnung.pdf",
+  "page_count": 1,
+  "fields": {
+    "energy_carrier": {
+      "value": "natural_gas",
+      "source": "energy_bill.erdgas_suedwest_jahresabrechnung.pdf#carrier",
+      "confidence": "high",
+      "evidence": "Bill references Erdgas / Gasabrechnung"
+    }
+  }
+}

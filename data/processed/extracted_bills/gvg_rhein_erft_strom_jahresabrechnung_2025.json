@@ -1,0 +1,28 @@
+{
+  "source_file": "gvg_rhein_erft_strom_jahresabrechnung_2025.pdf",
+  "page_count": 3,
+  "fields": {
+    "energy_carrier": {
+      "value": "natural_gas",
+      "source": "energy_bill.gvg_rhein_erft_strom_jahresabrechnung_2025.pdf#carrier",
+      "confidence": "high",
+      "evidence": "Bill references Erdgas / Gasabrechnung"
+    },
+    "billing_period": {
+      "value": {
+        "start_date": "01.04.2024",
+        "end_date": "31.03.2025",
+        "days": 364
+      },
+      "source": "energy_bill.gvg_rhein_erft_strom_jahresabrechnung_2025.pdf#period",
+      "confidence": "high",
+      "evidence": "Abrechnungszeitraum: 01.04.2024 - 31.03.2025"
+    },
+    "meter_reading_type": {
+      "value": "estimated",
+      "source": "energy_bill.gvg_rhein_erft_strom_jahresabrechnung_2025.pdf#reading_type",
+      "confidence": "medium",
+      "evidence": "Rechnerische Schätzung / maschinell ermittelt"
+    }
+  }
+}

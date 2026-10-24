@@ -1,0 +1,24 @@
+{
+  "source_file": "swm_musterrechnung_strom_erdgas_original.pdf",
+  "page_count": 2,
+  "fields": {
+    "energy_carrier": {
+      "value": "natural_gas",
+      "source": "energy_bill.swm_musterrechnung_strom_erdgas_original.pdf#carrier",
+      "confidence": "high",
+      "evidence": "Bill references Erdgas / Gasabrechnung"
+    },
+    "annual_consumption_kwh": {
+      "value": 11941.0,
+      "source": "energy_bill.swm_musterrechnung_strom_erdgas_original.pdf#consumption",
+      "confidence": "high",
+      "evidence": "M-Erdgas 11.941 kWh 12.945 kWh 765,02 Euro"
+    },
+    "current_annual_cost_eur": {
+      "value": 2264.32,
+      "source": "energy_bill.swm_musterrechnung_strom_erdgas_original.pdf#cost",
+      "confidence": "high",
+      "evidence": "Gesamtbetrag 2.264,32 Euro"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "source_file": "esb_energie_suedbayern_gas_jahresabrechnung.pdf",
+  "page_count": 2,
+  "fields": {
+    "energy_carrier": {
+      "value": "natural_gas",
+      "source": "energy_bill.esb_energie_suedbayern_gas_jahresabrechnung.pdf#carrier",
+      "confidence": "high",
+      "evidence": "Bill references Erdgas / Gasabrechnung"
+    }
+  }
+}

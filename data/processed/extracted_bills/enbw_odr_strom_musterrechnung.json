@@ -1,0 +1,28 @@
+{
+  "source_file": "enbw_odr_strom_musterrechnung.pdf",
+  "page_count": 4,
+  "fields": {
+    "energy_carrier": {
+      "value": "natural_gas",
+      "source": "energy_bill.enbw_odr_strom_musterrechnung.pdf#carrier",
+      "confidence": "high",
+      "evidence": "Bill references Erdgas / Gasabrechnung"
+    },
+    "billing_period": {
+      "value": {
+        "start_date": "01.01.2017",
+        "end_date": "31.12.2017",
+        "days": 364
+      },
+      "source": "energy_bill.enbw_odr_strom_musterrechnung.pdf#period",
+      "confidence": "high",
+      "evidence": "01.01.2017 - 31.12.2017"
+    },
+    "annual_consumption_kwh": {
+      "value": 3592.4,
+      "source": "energy_bill.enbw_odr_strom_musterrechnung.pdf#consumption",
+      "confidence": "high",
+      "evidence": "Verbrauch HT (01.01.17 - 31.12.17) 3.592,4 kWh zu 18,60 c/kWh 668,19 €"
+    }
+  }
+}

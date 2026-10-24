@@ -1,0 +1,40 @@
+{
+  "source_file": "green_planet_energy_oekostrom_flex_musterrechnung.pdf",
+  "page_count": 6,
+  "fields": {
+    "energy_carrier": {
+      "value": "electricity",
+      "source": "energy_bill.green_planet_energy_oekostrom_flex_musterrechnung.pdf#carrier",
+      "confidence": "high",
+      "evidence": "Bill references Strom / Stromabrechnung"
+    },
+    "billing_period": {
+      "value": {
+        "start_date": "01.02.2025",
+        "end_date": "28.02.2025",
+        "days": 27
+      },
+      "source": "energy_bill.green_planet_energy_oekostrom_flex_musterrechnung.pdf#period",
+      "confidence": "high",
+      "evidence": "Lieferzeitraum vom 01.02.2025 bis 28.02.2025."
+    },
+    "current_annual_cost_eur": {
+      "value": 149.34,
+      "source": "energy_bill.green_planet_energy_oekostrom_flex_musterrechnung.pdf#cost",
+      "confidence": "high",
+      "evidence": "Gesamtbetrag 149,34 €      28,37 € 177,71 €"
+    },
+    "meter_reading_type": {
+      "value": "estimated",
+      "source": "energy_bill.green_planet_energy_oekostrom_flex_musterrechnung.pdf#reading_type",
+      "confidence": "medium",
+      "evidence": "Rechnerische Schätzung / maschinell ermittelt"
+    },
+    "working_price_ct_per_kwh": {
+      "value": 30.2353,
+      "source": "energy_bill.green_planet_energy_oekostrom_flex_musterrechnung.pdf#tariff",
+      "confidence": "high",
+      "evidence": "Arbeitspreis 01.02.25 - 28.02.25 434 kWh 30,2353 ct/kWh"
+    }
+  }
+}

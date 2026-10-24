@@ -1,0 +1,46 @@
+{
+  "source_file": "green_planet_energy_gas_musterrechnung.pdf",
+  "page_count": 4,
+  "fields": {
+    "energy_carrier": {
+      "value": "natural_gas",
+      "source": "energy_bill.green_planet_energy_gas_musterrechnung.pdf#carrier",
+      "confidence": "high",
+      "evidence": "Bill references Erdgas / Gasabrechnung"
+    },
+    "billing_period": {
+      "value": {
+        "start_date": "15.06.2025",
+        "end_date": "25.06.2026",
+        "days": 375
+      },
+      "source": "energy_bill.green_planet_energy_gas_musterrechnung.pdf#period",
+      "confidence": "high",
+      "evidence": "Abrechnung für den Lieferzeitraum vom 15.06.2025 bis 25.06.2026."
+    },
+    "annual_consumption_kwh": {
+      "value": 7109.0,
+      "source": "energy_bill.green_planet_energy_gas_musterrechnung.pdf#consumption",
+      "confidence": "high",
+      "evidence": "Echtes Ökogas 7.109 kWh an 376 Tagen 1.165,41 €  221,43 € 1.386,84 €"
+    },
+    "current_annual_cost_eur": {
+      "value": 1165.41,
+      "source": "energy_bill.green_planet_energy_gas_musterrechnung.pdf#cost",
+      "confidence": "high",
+      "evidence": "Gesamtbetrag 1.165,41 €      221,43 € 1.386,84 €"
+    },
+    "meter_reading_type": {
+      "value": "customer_reading",
+      "source": "energy_bill.green_planet_energy_gas_musterrechnung.pdf#reading_type",
+      "confidence": "high",
+      "evidence": "Ablesung durch Kunde (Kundenablesung)"
+    },
+    "working_price_ct_per_kwh": {
+      "value": 13.972,
+      "source": "energy_bill.green_planet_energy_gas_musterrechnung.pdf#tariff",
+      "confidence": "high",
+      "evidence": "Arbeitspreis  15.06.25 - 25.06.25 33 kWh 13,9720 ct/kWh"
+    }
+  }
+}

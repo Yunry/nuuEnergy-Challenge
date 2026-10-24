@@ -1,0 +1,52 @@
+{
+  "source_file": "swu_stadtwerke_ulm_strom_gas_abrechnung.pdf",
+  "page_count": 11,
+  "fields": {
+    "energy_carrier": {
+      "value": "natural_gas",
+      "source": "energy_bill.swu_stadtwerke_ulm_strom_gas_abrechnung.pdf#carrier",
+      "confidence": "high",
+      "evidence": "Bill references Erdgas / Gasabrechnung"
+    },
+    "billing_period": {
+      "value": {
+        "start_date": "15.04.2016",
+        "end_date": "12.04.2017",
+        "days": 362
+      },
+      "source": "energy_bill.swu_stadtwerke_ulm_strom_gas_abrechnung.pdf#period",
+      "confidence": "high",
+      "evidence": "Musterstr. 10, 10000 Musterstadt für den Zeitraum vom 15.04.2016 bis 12.04.2017."
+    },
+    "annual_consumption_kwh": {
+      "value": 31008.0,
+      "source": "energy_bill.swu_stadtwerke_ulm_strom_gas_abrechnung.pdf#consumption",
+      "confidence": "high",
+      "evidence": "Gas 31.008 kWh (357 Tage) 33.528 kWh (363 Tage) 2.159,22 EUR"
+    },
+    "current_annual_cost_eur": {
+      "value": 224.65,
+      "source": "energy_bill.swu_stadtwerke_ulm_strom_gas_abrechnung.pdf#cost",
+      "confidence": "high",
+      "evidence": "Rechnungsbetrag 224,65 EUR"
+    },
+    "meter_reading_type": {
+      "value": "customer_reading",
+      "source": "energy_bill.swu_stadtwerke_ulm_strom_gas_abrechnung.pdf#reading_type",
+      "confidence": "high",
+      "evidence": "Ablesung durch Kunde (Kundenablesung)"
+    },
+    "working_price_ct_per_kwh": {
+      "value": 0.19782,
+      "source": "energy_bill.swu_stadtwerke_ulm_strom_gas_abrechnung.pdf#tariff",
+      "confidence": "high",
+      "evidence": "Arbeitspreis 1.300 kWh 0,19782 EUR"
+    },
+    "base_price_eur_per_year": {
+      "value": 89.66,
+      "source": "energy_bill.swu_stadtwerke_ulm_strom_gas_abrechnung.pdf#tariff",
+      "confidence": "high",
+      "evidence": "Grundpreis 363 Tage 89,66 EUR /"
+    }
+  }
+}

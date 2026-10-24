@@ -1,0 +1,28 @@
+{
+  "source_file": "enbw_odr_gas_musterrechnung.pdf",
+  "page_count": 4,
+  "fields": {
+    "energy_carrier": {
+      "value": "natural_gas",
+      "source": "energy_bill.enbw_odr_gas_musterrechnung.pdf#carrier",
+      "confidence": "high",
+      "evidence": "Bill references Erdgas / Gasabrechnung"
+    },
+    "billing_period": {
+      "value": {
+        "start_date": "01.01.2017",
+        "end_date": "31.12.2017",
+        "days": 364
+      },
+      "source": "energy_bill.enbw_odr_gas_musterrechnung.pdf#period",
+      "confidence": "high",
+      "evidence": "01.01.2017 - 31.12.2017"
+    },
+    "annual_consumption_kwh": {
+      "value": 16928.0,
+      "source": "energy_bill.enbw_odr_gas_musterrechnung.pdf#consumption",
+      "confidence": "high",
+      "evidence": "Gas (Vertrag 2211215) 01.01.2017 - 31.12.2017 (365 Tage) 16.928 kWh 01.01.2016 - 31.12.2016 (366 Tage) 17.328 kWh"
+    }
+  }
+}
