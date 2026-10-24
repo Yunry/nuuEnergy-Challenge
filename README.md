@@ -1,5 +1,11 @@
 # nuuEnergy: Heat Pump Ready? — team research and build brief
 
+## Try the browser prototype
+
+With Node.js 20 or newer, run `npm run dev` and open [http://127.0.0.1:4173](http://127.0.0.1:4173). No installation or API key is needed. The English flow supports manual entry, five sample homes, answer review, larger text and a downloadable assessment. The calculation engine is a provisional preview awaiting the team's final model; bill extraction is not yet included.
+
+See [browser setup, integration and accessibility notes](docs/browser-flow.md). Run `npm test` for the assessment checks.
+
 Research date: 24 October 2026. Build window supplied by the team: 11:00–18:00, Europe/Berlin. Team: software/architecture/data; mathematical modelling; product/management/presentation.
 
 ## Recommendation
