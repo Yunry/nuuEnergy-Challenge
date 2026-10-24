@@ -74,17 +74,17 @@ class LiveDemo(unittest.TestCase):
     def test_starts_empty_then_each_upload_is_the_next_step(self):
         self.assertFalse(live_state(self.folder)["started"])
         with self.assertRaises(ai_extract.ExtractionError):
-            self.upload_doc("floor_plan_top_floor.pdf")  # not started yet
+            self.upload_doc("heating_check_report.pdf")  # not started yet
         self.assertEqual(live_start(self.folder)["timeline"][0]["verdict"], "yellow")
-        self.upload_doc("floor_plan_top_floor.pdf")
-        state = self.upload_doc("radiator_measurement.pdf")
-        self.assertEqual([r["verdict"] for r in state["timeline"]], ["yellow", "yellow", "green"])
-        self.assertTrue((self.folder / "raw" / "documents" / "radiator_measurement.pdf").exists())
+        state = self.upload_doc("heating_check_report.pdf")  # one upload settles it
+        self.assertEqual([r["verdict"] for r in state["timeline"]], ["yellow", "green"])
+        self.assertEqual(state["latest"]["decision"]["homeowner_can_provide"], [])
+        self.assertTrue((self.folder / "raw" / "documents" / "heating_check_report.pdf").exists())
         self.assertFalse(live_reset(self.folder)["started"])
         self.assertFalse(self.folder.exists())
 
     def test_known_demo_documents_give_their_facts_and_unknown_files_none(self):
-        facts = known_facts("x.pdf", (DEMO_DOCS / "radiator_measurement.pdf").read_bytes())
+        facts = known_facts("x.pdf", (DEMO_DOCS / "heating_check_report.pdf").read_bytes())
         self.assertEqual(facts["radiator_type"]["value"], "22")
         self.assertEqual(facts["radiator_type"]["source_file"], "x.pdf")
         self.assertEqual(known_facts("y.pdf", PDF), {})

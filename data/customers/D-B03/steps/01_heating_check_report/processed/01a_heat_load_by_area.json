@@ -31,9 +31,9 @@
     },
     "unheated_area": {
       "value": 45,
-      "source": "upload:floor_plan_top_floor.pdf",
+      "source": "upload:heating_check_report.pdf",
       "confidence": "high",
-      "evidence": "Floor plan p.1: top floor 45 m², marked 'not heated, not lived in'"
+      "evidence": "Top floor added in the 1990s: 45 m², not heated and not lived in"
     },
     "insulation": {
       "value": [

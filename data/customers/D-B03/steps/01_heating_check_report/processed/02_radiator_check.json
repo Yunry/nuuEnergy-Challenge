@@ -21,15 +21,15 @@
     },
     "pipe_system": {
       "value": "two-pipe",
-      "source": "upload:hydraulic_balancing_protocol_2023.pdf",
+      "source": "upload:heating_check_report.pdf",
       "confidence": "high",
-      "evidence": "Protocol: two-pipe system (Zweirohrsystem)"
+      "evidence": "Heating system: two-pipe (Zweirohrsystem)"
     },
     "flow_temperature_c": {
       "value": 55,
-      "source": "upload:hydraulic_balancing_protocol_2023.pdf",
+      "source": "upload:heating_check_report.pdf",
       "confidence": "medium",
-      "evidence": "Heating curve set to 55 °C flow at -12 °C outside"
+      "evidence": "Heating curve: 55 °C flow at -12 °C outside"
     },
     "radiator_count": {
       "value": 15,
@@ -39,24 +39,24 @@
     },
     "radiator_type": {
       "value": "22",
-      "source": "upload:radiator_measurement.pdf",
+      "source": "upload:heating_check_report.pdf",
       "confidence": "high",
-      "evidence": "Two panels with fins between them, photo and tape measure"
+      "evidence": "15 panel radiators, all type 22 (two panels)"
     },
     "radiator_size_mm": {
       "value": [
         600,
         1400
       ],
-      "source": "upload:radiator_measurement.pdf",
+      "source": "upload:heating_check_report.pdf",
       "confidence": "high",
-      "evidence": "Height 600 mm, width 1400 mm; all 15 radiators the same model"
+      "evidence": "All radiators 600 × 1400 mm"
     },
     "valves_to_replace": {
       "value": 0,
-      "source": "upload:hydraulic_balancing_protocol_2023.pdf",
+      "source": "upload:heating_check_report.pdf",
       "confidence": "high",
-      "evidence": "All 15 thermostatic valves replaced and preset, hydraulic balancing done 03/2023"
+      "evidence": "Hydraulic balancing done 03/2023: all 15 thermostatic valves replaced and preset"
     }
   },
   "reference_data": {

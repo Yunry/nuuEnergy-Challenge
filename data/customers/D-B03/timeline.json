@@ -30,76 +30,16 @@
   },
   {
     "step": 1,
-    "label": "floor_plan",
+    "label": "heating_check_report",
     "files": [
-      "raw/documents/floor_plan_top_floor.pdf"
-    ],
-    "facts": [
-      "unheated_area"
-    ],
-    "verdict": "yellow",
-    "verdict_kind": "unknown",
-    "load_kw": [
-      15.8,
-      18.4
-    ],
-    "flow_c": [
-      50,
-      84
-    ],
-    "saving_eur": [
-      3531,
-      4185
-    ],
-    "open_inputs": [
-      "Heat load taken from",
-      "Heat demand per m² (W/m²)",
-      "Full-load hours per year",
-      "Radiator type",
-      "Typical radiator length (height 600 mm)"
-    ],
-    "technician_checks": 4
-  },
-  {
-    "step": 2,
-    "label": "radiator_measurement",
-    "files": [
-      "raw/documents/radiator_measurement.pdf"
-    ],
-    "facts": [
-      "radiator_size_mm",
-      "radiator_type"
-    ],
-    "verdict": "green",
-    "verdict_kind": "ready",
-    "load_kw": [
-      15.8,
-      18.4
-    ],
-    "flow_c": [
-      51,
-      54
-    ],
-    "saving_eur": [
-      4185,
-      4185
-    ],
-    "open_inputs": [
-      "Heat load taken from",
-      "Heat demand per m² (W/m²)",
-      "Full-load hours per year"
-    ],
-    "technician_checks": 4
-  },
-  {
-    "step": 3,
-    "label": "hydraulic_balancing",
-    "files": [
-      "raw/documents/hydraulic_balancing_protocol_2023.pdf"
+      "raw/documents/heating_check_report.pdf"
     ],
     "facts": [
       "flow_temperature_c",
       "pipe_system",
+      "radiator_size_mm",
+      "radiator_type",
+      "unheated_area",
       "valves_to_replace"
     ],
     "verdict": "green",

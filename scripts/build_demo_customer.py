@@ -1,7 +1,8 @@
-"""Build the demo customer data/customers/D-B03: B-03's input (yellow), then three uploads that each remove
-uncertainty, saved step by step so the change in result and technician report can be shown.
+"""Build the demo customer data/customers/D-B03: B-03's input (yellow, uncertain), then ONE upload, an installer's
+heating check report, that settles the open questions (green over every remaining option). Both steps are saved, so
+the change in result and technician report can be shown.
 
-The three documents are ILLUSTRATIVE (made up for the demo, not real customer data); their facts are what the
+The document is ILLUSTRATIVE (made up for the demo, not real customer data); their facts are what the
 document extraction would return. Rebuild from scratch:  python3 scripts/build_demo_customer.py
 """
 import json
@@ -12,7 +13,6 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
-from matplotlib.patches import Rectangle  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src" / "decision_engine"))
@@ -23,27 +23,22 @@ FOLDER = ROOT / "data" / "customers" / "D-B03"
 BASE = ROOT / "data" / "demo" / "B-03"
 
 UPLOADS = [
-    ("floor_plan", "floor_plan_top_floor.pdf", "Floor plan, top floor (Dachgeschoss)", [
-        "Top floor added in the 1990s: 45 m², marked 'not heated, not lived in'.",
-        "Ground and first floor: 155 m² heated living space.",
-    ], {"unheated_area": (45, "high", "Floor plan p.1: top floor 45 m², marked 'not heated, not lived in'")}),
-    ("radiator_measurement", "radiator_measurement.pdf", "Radiator measurement by the homeowner", [
-        "Living room radiator: two panels with fins between them (type 22).",
-        "Height 600 mm, width 1400 mm (tape measure).",
-        "Homeowner note: all 15 radiators are the same model and size.",
-    ], {"radiator_type": ("22", "high", "Two panels with fins between them, photo and tape measure"),
-        "radiator_size_mm": ([600, 1400], "high", "Height 600 mm, width 1400 mm; all 15 radiators the same model")}),
-    ("hydraulic_balancing", "hydraulic_balancing_protocol_2023.pdf", "Hydraulic balancing protocol, 03/2023", [
+    ("heating_check_report", "heating_check_report.pdf", "Heating check report (installer visit)", [
+        "Top floor added in the 1990s: 45 m², not heated and not lived in.",
+        "Radiators: 15 panel radiators, all type 22 (two panels), 600 × 1400 mm.",
         "Heating system: two-pipe (Zweirohrsystem).",
-        "All 15 thermostatic valves replaced and preset; hydraulic balancing done.",
+        "Hydraulic balancing done 03/2023: all 15 thermostatic valves replaced and preset.",
         "Heating curve: 55 °C flow at -12 °C outside.",
-    ], {"valves_to_replace": (0, "high", "All 15 thermostatic valves replaced and preset, hydraulic balancing done 03/2023"),
-        "pipe_system": ("two-pipe", "high", "Protocol: two-pipe system (Zweirohrsystem)"),
-        "flow_temperature_c": (55, "medium", "Heating curve set to 55 °C flow at -12 °C outside")}),
+    ], {"unheated_area": (45, "high", "Top floor added in the 1990s: 45 m², not heated and not lived in"),
+        "radiator_type": ("22", "high", "15 panel radiators, all type 22 (two panels)"),
+        "radiator_size_mm": ([600, 1400], "high", "All radiators 600 × 1400 mm"),
+        "pipe_system": ("two-pipe", "high", "Heating system: two-pipe (Zweirohrsystem)"),
+        "valves_to_replace": (0, "high", "Hydraulic balancing done 03/2023: all 15 thermostatic valves replaced and preset"),
+        "flow_temperature_c": (55, "medium", "Heating curve: 55 °C flow at -12 °C outside")}),
 ]
 
 
-def make_pdf(path, title, lines, floor_plan=False):
+def make_pdf(path, title, lines):
     fig = plt.figure(figsize=(8.27, 11.69))
     ax = fig.add_axes([0, 0, 1, 1])
     ax.axis("off")
@@ -52,11 +47,6 @@ def make_pdf(path, title, lines, floor_plan=False):
     ax.text(0.08, 0.885, "Customer D-B03 · Hamburg area (21xxx)", fontsize=9, color="#555555")
     for i, line in enumerate(lines):
         ax.text(0.08, 0.84 - i * 0.03, line, fontsize=11)
-    if floor_plan:
-        ax.add_patch(Rectangle((0.15, 0.35), 0.7, 0.3, fill=False, lw=2))
-        ax.add_patch(Rectangle((0.15, 0.35), 0.3, 0.3, facecolor="#eeeeee", lw=2, edgecolor="black"))
-        ax.text(0.3, 0.5, "Top floor\n45 m²\nnot heated", ha="center", va="center", fontsize=11)
-        ax.text(0.65, 0.5, "Stairs / storage\n(roof slope)", ha="center", va="center", fontsize=10, color="#555555")
     fig.savefig(path)
     plt.close(fig)
 
@@ -68,7 +58,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         for label, name, title, lines, facts in UPLOADS:
             path = Path(tmp) / name
-            make_pdf(path, title, lines, floor_plan=label == "floor_plan")
+            make_pdf(path, title, lines)
             facts = {k: {"value": v, "confidence": c, "evidence": e, "source_file": name} for k, (v, c, e) in facts.items()}
             print("wrote", customer_steps.add_upload(FOLDER, label, [path], facts).relative_to(ROOT))
     print((FOLDER / "timeline.md").read_text())

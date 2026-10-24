@@ -1,0 +1,48 @@
+{
+  "step": 1,
+  "label": "heating_check_report",
+  "files": [
+    "raw/documents/heating_check_report.pdf"
+  ],
+  "facts": {
+    "unheated_area": {
+      "value": 45,
+      "confidence": "high",
+      "evidence": "Top floor added in the 1990s: 45 m², not heated and not lived in",
+      "source_file": "heating_check_report.pdf"
+    },
+    "radiator_type": {
+      "value": "22",
+      "confidence": "high",
+      "evidence": "15 panel radiators, all type 22 (two panels)",
+      "source_file": "heating_check_report.pdf"
+    },
+    "radiator_size_mm": {
+      "value": [
+        600,
+        1400
+      ],
+      "confidence": "high",
+      "evidence": "All radiators 600 × 1400 mm",
+      "source_file": "heating_check_report.pdf"
+    },
+    "pipe_system": {
+      "value": "two-pipe",
+      "confidence": "high",
+      "evidence": "Heating system: two-pipe (Zweirohrsystem)",
+      "source_file": "heating_check_report.pdf"
+    },
+    "valves_to_replace": {
+      "value": 0,
+      "confidence": "high",
+      "evidence": "Hydraulic balancing done 03/2023: all 15 thermostatic valves replaced and preset",
+      "source_file": "heating_check_report.pdf"
+    },
+    "flow_temperature_c": {
+      "value": 55,
+      "confidence": "medium",
+      "evidence": "Heating curve: 55 °C flow at -12 °C outside",
+      "source_file": "heating_check_report.pdf"
+    }
+  }
+}
