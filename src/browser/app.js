@@ -1,6 +1,7 @@
 import { resolveReview, clearUnknownAnswers } from './evidence.js';
 import { assess, demo, scenarios, toCustomerInput } from './assessment.js';
 import { extractFiles, applyFields, fieldLabels, uploadFiles, validateFiles } from './extraction.js';
+import { customerResult, emptyRes } from './customerresult.js';
 import { emptyQc, questionHtml, progressBar, nextId, prevId, visible, answerText, TITLES, CONSUMPTION_RANGES, RADIATOR_RANGES, RENOVATION } from './quickcheck.js';
 
 const app = document.querySelector('#app');
@@ -439,10 +440,10 @@ function resultPage() {
   if (assessment.status === 'error') return `<main id="main" class="result-main">${top}<section class="verdict-panel yellow"><div><h1 id="page-title" tabindex="-1">We couldn’t complete the check.</h1><p class="lead">The calculation did not respond. Your answers are still saved in this tab.</p><div class="result-actions"><button class="button primary" data-retry-assess>Try again</button></div></div></section></main>`;
 
   const { processed: p, outputs: o } = assessment.data;
-  if (state.mode === 'customer') return `<main id="main" class="result-main cv-main">${top}${customerView(p, o)}</main>`;
+  if (state.mode === 'customer') return `<main id="main" class="result-main cv-main">${top}${crView(p, o)}</main>`;
   if (state.mode === 'developer') return `<main id="main" class="result-main rp">${top}${developerView(p, o, true)}</main>`;
   return `<main id="main" class="result-main split">${top}<div class="split-panes">
-    <section class="pane pane-customer" aria-label="Customer view"><p class="pane-label">Customer view</p>${customerView(p, o)}</section>
+    <section class="pane pane-customer" aria-label="Customer view"><p class="pane-label">Customer view</p>${crView(p, o)}</section>
     <section class="pane pane-dev rp" aria-label="Developer view"><p class="pane-label">Developer view</p>${developerView(p, o, false)}</section></div></main>`;
 }
 // Developer view: the detailed result (decision, four steps, inputs with evidence, what-if, checks).
@@ -535,6 +536,25 @@ function savingChart(o, fuel, priceAssumed = false) {
     </svg>
     <p class="small">${hp[1] > hp[0] ? `The lighter band is the range over what is still open (heat pump efficiency ${span(jaz, '')}). ` : ''}Fixed challenge prices, energy only.${priceAssumed ? ' *No official price for this fuel: the natural-gas price (€0.11/kWh) is assumed; the real saving is likely higher.' : ''}</p>
     <table class="sr-only"><caption>Heating cost per year</caption><tr><th>Today</th><td>${today !== null ? money(today) : 'not priced'}</td></tr><tr><th>With a heat pump</th><td>${euros(hp)}</td></tr>${cost.saving ? `<tr><th>Saving</th><td>${euros(saving)}</td></tr>` : ''}</table></figure>`;
+}
+// New customer result page (customerresult.js). The old customerView below is kept for reference only.
+function crView(p, o) {
+  if (state.qc.res?.docs === 'reading' && !crReading) state.qc.res.docs = 'pending';
+  return customerResult(p, o, { answers: state.answers, qc: state.qc, evidence: state.evidence, sample: sampleUnchanged(), escape, money, aiAvailable });
+}
+let crReading = false;
+async function crReadDocs(file) {
+  const r = state.qc.res ||= emptyRes();
+  try { validateFiles([file]); } catch (error) { r.error = error.message; render(); return; }
+  r.docs = 'reading'; r.error = ''; crReading = true; render(); saveFiles([file]);
+  try {
+    const result = await extractFiles([file], { customer_id: customerId(), questionnaire: toCustomerInput(values()) });
+    const f = result.fields || {}, area = f.floor_area_m2?.value, year = f.construction_year?.value;
+    if (!area && !year) throw new Error('We could not find the size or the year on this page. Try a clearer photo.');
+    r.docsFields = { fields: f, text: [area ? `${formatNumber(area)} m²` : '', year ? `built in ${year}` : ''].filter(Boolean).join(', ') };
+    r.docs = 'review';
+  } catch (error) { r.docs = 'pending'; r.error = error.message || 'The document could not be read.'; }
+  crReading = false; save(); if (state.step === 5) render();
 }
 function customerView(p, o) {
   const d = o.decision, cost = o['03_operating_cost'].cost_eur_per_year, v = verdictMeta(d, Boolean(o['02_radiator_check'].flow_temp_c.by_case));
@@ -716,14 +736,14 @@ let radFiles = { valve: null, side: null };
 const AUTO_ADVANCE = new Set(['heat_distribution', 'persons_in_household', 'energy_carrier', 'consumption', 'radiator_count', 'construction_year', 'video', 'area', 'renovation']);
 function qcShow(id) { state.q = id; state.qc.error = ''; save(); render(); document.querySelector('#page-title')?.focus(); window.scrollTo(0, 0); }
 function qcNext() {
-  if (state.qcReturn) { state.qcReturn = false; setStep(4); return; }
+  if (state.qcReturn) { const to = state.qcReturn === 5 ? 5 : 4; state.qcReturn = false; setStep(to); return; }
   if (state.q === 'renovation') { qcAfterRenovation(); return; }
   if (state.q === 'unusual') { qcFinish(); return; }
   const next = nextId(state.q, state.answers, state.qc);
   if (next) qcShow(next); else qcFinish();
 }
 function qcBack() {
-  if (state.qcReturn) { state.qcReturn = false; setStep(4); return; }
+  if (state.qcReturn) { const to = state.qcReturn === 5 ? 5 : 4; state.qcReturn = false; setStep(to); return; }
   const prev = prevId(state.q, state.answers, state.qc);
   if (prev) qcShow(prev); else setStep(0);
 }
@@ -781,7 +801,7 @@ function qcPick(name, value) {
   if (name === 'construction_year') { qc.yearUnknown = value === 'unknown'; a.construction_year = value === 'unknown' ? '' : value; }
   if (name === 'video') qc.video = value === 'unknown' ? 'no' : value;
   if (name === 'area') { qc.areaUnknown = true; qc.areaTouched = false; a.floor_area_m2 = ''; }
-  if (name === 'renovation') { qc.renovationUnknown = true; qc.renovationTouched = false; a.renovation_status = 'unknown'; }
+  if (name === 'renovation') { const known = value !== 'unknown'; qc.renovationUnknown = !known; qc.renovationTouched = known; a.renovation_status = known ? value : 'unknown'; }
   if (name === 'unusual') qc.b15 = value === 'unknown' ? ['unknown'] : qc.b15.includes(value) ? qc.b15.filter(v => v !== value) : [...qc.b15.filter(v => v !== 'unknown'), value];
   save();
   if (AUTO_ADVANCE.has(name) && !(name === 'video' && value === 'unknown')) qcNext(); else { render(); document.querySelector(`[data-qc-pick="${name}"][data-value="${value}"]`)?.focus(); }
@@ -864,6 +884,7 @@ function qcConfirm(yes) {
 app.addEventListener('input', event => {
   const el = event.target;
   if (el.dataset?.qcRange) { qcRange(el.dataset.qcRange, el.value); return; }
+  if (el.dataset?.crContact) { const r = state.qc.res ||= emptyRes(); r.contact = { ...(r.contact || {}), [el.dataset.crContact]: el.value }; save(); return; }
   if (el.name && Object.hasOwn(state.answers, el.name)) { state.answers[el.name] = el.value; document.querySelectorAll(`[data-evidence-for="${el.name}"]`).forEach(b => b.remove()); save(); }
   if (el.name?.startsWith('wi:')) {
     const key = el.name.slice(3), p = whatIf.data.params.find(x => x.key === key), label = p.labels[Number(el.value)];
@@ -875,6 +896,7 @@ app.addEventListener('input', event => {
 app.addEventListener('change', event => {
   const el = event.target;
   if (el.id === 'evidence-files') { chooseFiles([...el.files]); return; }
+  if (el.dataset?.crFile) { crTakeFile(el.dataset.crFile, el.files[0]); return; }
   if (el.dataset?.qcFile) { qcTakeFile(el.dataset.qcFile, el.files[0]); return; }
   if (el.name && Object.hasOwn(state.answers, el.name)) {
     state.answers[el.name] = el.value;
@@ -919,6 +941,14 @@ function chooseFiles(files) {
   render(); document.querySelector(extraction.error ? '#evidence-files' : '[data-extract]')?.focus();
   announce(extraction.error || `${chosenFiles.length} ${chosenFiles.length === 1 ? 'file ready' : 'files ready'}. Choose Find my home details to continue.`);
 }
+// A file for the customer result page (property document, meter cabinet or outside photo), from its button or a drop.
+function crTakeFile(kind, file) {
+  const r = state.qc.res ||= emptyRes(); if (!file) return;
+  if (kind === 'docs') { crReadDocs(qcRename(file, 'property-document')); return; }
+  const named = qcRename(file, kind === 'meter' ? 'meter-cabinet' : 'outside-house');
+  try { validateFiles([named]); } catch (error) { r.error = error.message; render(); return; }
+  r.error = ''; saveFiles([named]); r[kind === 'meter' ? 'meterPhoto' : 'outdoorPhoto'] = named.name; save(); render(); announce('Photo added.');
+}
 // A quick-check file (bill, or a radiator photo: valve / side) from the file button or dropped on its zone.
 function qcTakeFile(kind, file) {
   if (!file) return;
@@ -928,8 +958,8 @@ function qcTakeFile(kind, file) {
   radFiles[kind] = qcRename(file, `radiator-${kind}`); state.qc.photos[kind] = file.name; state.qc.error = ''; render();
   announce(`${kind === 'valve' ? 'Valve' : 'Side'} photo added: ${file.name}.`);
 }
-// Drag and drop: the upload zone and the quick-check photo zones accept files dropped from the computer.
-const DROP_ZONES = '#upload-drop-zone, [data-qc-drop]';
+// Drag and drop: the upload zone, the quick-check photo zones and the result page's file buttons accept dropped files.
+const DROP_ZONES = '#upload-drop-zone, [data-qc-drop], [data-cr-drop]';
 app.addEventListener('dragover', event => {
   const zone = event.target.closest(DROP_ZONES);
   if (zone) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; zone.classList.add('drag-over'); }
@@ -943,6 +973,7 @@ app.addEventListener('drop', event => {
   if (!zone) return;
   event.preventDefault(); zone.classList.remove('drag-over');
   if (zone.id === 'upload-drop-zone') chooseFiles([...event.dataTransfer.files]);
+  else if (zone.dataset.crDrop) crTakeFile(zone.dataset.crDrop, event.dataTransfer.files[0]);
   else qcTakeFile(zone.dataset.qcDrop, event.dataTransfer.files[0]);
 });
 // A file dropped next to a zone must not open in the tab (which would leave the app).
@@ -975,6 +1006,29 @@ app.addEventListener('click', async event => {
     announce('Saved assessment opened.'); return;
   }
   if (button.dataset.qcPick) { qcPick(button.dataset.qcPick, button.dataset.value); return; }
+  if (button.dataset.crGoto) {
+    if (button.dataset.crGoto === 'bill') state.qc.bill = 'pending';
+    if (button.dataset.crGoto === 'radiator_photos') state.qc.rad = 'pending';
+    state.qcReturn = 5; state.q = button.dataset.crGoto; setStep(1); return;
+  }
+  if (button.dataset.crOutdoor) { (state.qc.res ||= emptyRes()).outdoor = button.dataset.crOutdoor; save(); render(); announce('Answer saved.'); return; }
+  if (button.dataset.crDocs) {
+    const r = state.qc.res;
+    if (button.dataset.crDocs === 'yes') { const f = r.docsFields.fields; qcKeepEvidence(f, ['floor_area_m2', 'construction_year'].filter(k => f[k]?.value)); r.docs = 'confirmed'; }
+    else r.docs = 'pending';
+    save(); render(); return;
+  }
+  if (button.dataset.crBook) {
+    const r = state.qc.res ||= emptyRes(); r.booking = button.dataset.crBook; if (r.booking === 'video') r.slot = null; save(); render();
+    document.querySelector('#cr-booking')?.focus(); document.querySelector('#cr-booking')?.scrollIntoView({ block: 'start' }); return;
+  }
+  if (button.dataset.crSlot) { state.qc.res.slot = button.dataset.crSlot; save(); render(); document.querySelector('#cr-booking')?.focus(); return; }
+  if (button.hasAttribute('data-cr-cancel-booking')) { state.qc.res.booking = null; save(); render(); return; }
+  if (button.hasAttribute('data-cr-confirm-booking')) {
+    const r = state.qc.res; r.booked = { ...r.booked, [r.booking]: true };
+    if (r.booking === 'video') state.qc.video = r.slot;
+    announce(r.booking === 'video' ? `Video call requested for ${r.slot}.` : 'Technician visit requested.'); r.booking = null; save(); render(); return;
+  }
   if (button.hasAttribute('data-qc-next')) { qcNext(); return; }
   if (button.hasAttribute('data-qc-back')) { qcBack(); return; }
   if (button.dataset.qcSkip) { state.qc[button.dataset.qcSkip] = 'skipped'; save(); qcNext(); return; }
