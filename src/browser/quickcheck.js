@@ -54,13 +54,26 @@ export const RADIATOR_RANGES = [['1-5', '1–5', 3], ['6-10', '6–10', 8], ['11
 // The engine reads the year as a band (before 1979 / 1980s–90s / 2002 and later); one representative year per answer.
 export const YEAR_BANDS = [['1970', 'Before 1979'], ['1990', '1980–2001'], ['2010', '2002 or later']];
 export const RENOVATION = [['unrenovated', 'Nothing major', ''], ['partially', 'Some of it', 'For example new windows or roof insulation'], ['fully', 'Most of it', 'Windows, roof and walls']];
-export const UNUSUAL = [
-  ['unheated', 'Some rooms are not heated'],
-  ['stove', 'We often use a wood stove or fireplace'],
-  ['renovated', 'We have renovated'],
-  ['area', 'The size I gave may be wrong'],
+// B15 has two versions: use LOWER than expected (bill below the house-size estimate) or HIGHER than expected.
+export const UNUSUAL_LOWER = [
+  ['unheated', 'Some rooms are not heated or not lived in'],
+  ['stove', 'We often heat with a wood stove or fireplace'],
+  ['solar', 'Solar panels heat some of our hot water'],
+  ['renovated', 'The house is better insulated than its age suggests'],
+  ['away', 'We are often away, or not at home all year'],
+  ['area_big', 'The size I gave may be too big'],
   ['unknown', 'I don’t know'],
 ];
+export const UNUSUAL_HIGHER = [
+  ['warm', 'We keep the home very warm, or the heating runs all day'],
+  ['hot_water', 'We use a lot of hot water'],
+  ['old_boiler', 'Our boiler is old'],
+  ['other_use', 'The bill also covers other things, like cooking or another flat'],
+  ['draughty', 'The house is draughty or poorly insulated'],
+  ['area_small', 'The size I gave may be too small, e.g. the basement is heated too'],
+  ['unknown', 'I don’t know'],
+];
+export const UNUSUAL = [...UNUSUAL_LOWER, ...UNUSUAL_HIGHER];
 
 // ---------- illustrations (simple inline SVG, readable in black and white) ----------
 const svg = (w, h, body) => `<svg class="qc-art" viewBox="0 0 ${w} ${h}" fill="none" stroke="#254637" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
@@ -155,9 +168,11 @@ export function questionHtml(id, a, qc, ctx) {
       return head('B3', 'How much of your home has been modernised for energy?', 'For example new windows, or insulation in the roof or walls.')
         + `<div class="qc-options">${RENOVATION.map(([v, l, hint]) => option('renovation', v, l, chosen === v, '', hint)).join('')}</div>${notSure('renovation', qc.renovationUnknown)}${nav(Boolean(chosen) || qc.renovationUnknown, 'See my result')}`;
     }
-    case 'unusual':
-      return head('B15', 'Your energy use looks unusual for a home like yours', 'It is quite a bit lower or higher than we would expect. Could it be because of… (choose all that fit)')
-        + `<div class="qc-options">${UNUSUAL.map(([v, l]) => option('unusual', v, l, qc.b15.includes(v), v === 'stove' ? ART.stove : '')).join('')}</div>${nav(qc.b15.length > 0, 'See my result')}`;
+    case 'unusual': {
+      const higher = qc.b15Dir === 'higher', list = higher ? UNUSUAL_HIGHER : UNUSUAL_LOWER;
+      return head('B15', higher ? 'You use more energy than we would expect' : 'You use less energy than we would expect', `For a home of this size and age, your yearly use is quite a bit ${higher ? 'higher' : 'lower'}. Could it be because… (choose all that fit)`)
+        + `<div class="qc-options">${list.map(([v, l]) => option('unusual', v, l, qc.b15.includes(v), v === 'stove' ? ART.stove : '')).join('')}</div>${nav(qc.b15.length > 0, 'See my result')}`;
+    }
     default:
       return '';
   }

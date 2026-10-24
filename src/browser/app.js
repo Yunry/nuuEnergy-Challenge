@@ -754,8 +754,13 @@ function qcSyncNotes() {
   if (qc.consumptionRange && qc.consumptionRange !== 'unknown') lines.push(`Yearly use given as a range: ${pick([...CONSUMPTION_RANGES.oil.options, ...CONSUMPTION_RANGES.kwh.options], qc.consumptionRange)} (middle value used).`);
   if (qc.radiatorRange && qc.radiatorRange !== 'unknown') lines.push(`Radiators given as a range: ${pick(RADIATOR_RANGES, qc.radiatorRange)} (middle value used).`);
   if (qc.rad === 'unclear' || qc.rad === 'skipped') lines.push(qc.video && qc.video !== 'no' ? `Radiator connection unclear: video check requested (${qc.video}).` : 'Radiator connection unclear: technician must check.');
-  if (qc.b15.includes('unheated')) lines.push('Homeowner: some rooms are not heated.');
-  if (qc.b15.includes('area')) lines.push('Homeowner: the living area given may be wrong.');
+  if (qc.b15Shown) {
+    const why = { unheated: 'some rooms are not heated or not lived in', away: 'often away or not at home all year', area_big: 'the living area given may be too big',
+      warm: 'home kept very warm or heating runs all day', hot_water: 'high hot-water use', old_boiler: 'old boiler', other_use: 'the bill also covers other uses (cooking, another flat)',
+      draughty: 'draughty or poorly insulated house', area_small: 'the living area given may be too small (e.g. heated basement)' };
+    const said = qc.b15.filter(v => why[v]).map(v => why[v]);
+    lines.push(`Yearly use is ${qc.b15Dir === 'higher' ? 'higher' : 'lower'} than expected for the house size and age.${said.length ? ' Homeowner: ' + said.join('; ') + '.' : ''}`);
+  }
   if (qc.carrierOther) lines.push('Heating fuel: something other than gas, oil or LPG.');
   if (qc.hotWaterAssumed) lines.push('Hot water assumed to come from the boiler (not asked).');
   const marker = '[Quick check]';
@@ -770,7 +775,8 @@ async function qcAfterRenovation() {
     try {
       const data = await assess(toCustomerInput(values()));
       if (q !== state.qc) return;
-      if (data.outputs['01_heat_load'].heating_load_kw.consistent === false) { q.b15Shown = true; save(); qcShow('unusual'); return; }
+      const h = data.outputs['01_heat_load'].heating_load_kw, mid = r => (r[0] + r[1]) / 2;
+      if (h.consistent === false && h.by_consumption && h.by_area) { q.b15Shown = true; q.b15Dir = mid(h.by_consumption) > mid(h.by_area) ? 'higher' : 'lower'; q.b15 = []; save(); qcShow('unusual'); return; }
     } catch { /* the result page shows its own error */ }
   }
   if (q === state.qc) qcFinish();
@@ -780,6 +786,7 @@ function qcFinish() {
   if (a.hot_water_via_heating === 'unknown' && !state.sample) { a.hot_water_via_heating = 'yes'; qc.hotWaterAssumed = true; }
   if (qc.b15.includes('stove')) a.other_heat_source = 'yes';
   if (qc.b15.includes('renovated') && ['unknown', 'unrenovated'].includes(a.renovation_status)) a.renovation_status = 'partially';
+  if (qc.b15.includes('solar')) a.solar_thermal = 'yes';
   qcSyncNotes(); state.sample = state.sample && state.sampleAnswers === JSON.stringify(a); save(); setStep(5);
 }
 function qcPick(name, value) {
