@@ -47,14 +47,18 @@ from run_engine import DEMO as FIXTURE_DEMO, load_steps  # noqa: E402
 # A serverless bundle is read-only. Keep supplied examples in the bundle and customer writes in /tmp.
 DEMO = Path(os.environ.get('NUUENERGY_DATA_DIR', str(FIXTURE_DEMO)))
 if DEMO != FIXTURE_DEMO:
-    for source in FIXTURE_DEMO.glob('B-[0-9]*'):
-        for relative in ('raw/customer_input.json', 'processed'):
-            original, target = source / relative, DEMO / source.name / relative
-            if original.is_dir():
-                shutil.copytree(original, target, dirs_exist_ok=True)
-            elif original.is_file() and not target.exists():
-                target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(original, target)
+    try:
+        DEMO.mkdir(parents=True, exist_ok=True)
+        for source in FIXTURE_DEMO.glob('B-[0-9]*'):
+            for relative in ('raw/customer_input.json', 'processed'):
+                original, target = source / relative, DEMO / source.name / relative
+                if original.is_dir():
+                    shutil.copytree(original, target, dirs_exist_ok=True)
+                elif original.is_file() and not target.exists():
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(original, target)
+    except Exception as exc:
+        traceback.print_exc()
 
 ai_extract.load_env(ROOT / '.env')
 
