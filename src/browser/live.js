@@ -1,5 +1,5 @@
 // Live demo (live.html): a customer workspace, data/demo/B-Live, that grows by one saved step per upload. It starts
-// with B-03's stored questionnaire and no documents; each upload shows the JSON read from the file, the new result,
+// with B-05's stored questionnaire and no documents; each upload shows the JSON read from the file, the new result,
 // what to do next, and the timeline of all steps. /live.html?fresh=1 empties it and starts again.
 import { filePayload, validateFiles } from './extraction.js';
 
@@ -9,7 +9,7 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;
 const num = n => new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 }).format(n);
 const span = (r, unit) => (!r ? '—' : (r[0] === r[1] ? num(r[0]) : `${num(r[0])}–${num(r[1])}`) + unit);
 const announce = text => { document.querySelector('#announcement').textContent = text; };
-const DEMO_FILES = ['energieausweis_b03_hamburg_1970_oel.pdf', '05_zweirohr-vermutet_kompakt.jpeg (clear radiator photo)', '07_unklar_bad-multiblock.jpeg (unclear photo)'];
+const DEMO_FILES = ['07_unklar_bad-multiblock.jpeg (unclear photo)', '05_zweirohr-vermutet_kompakt.jpeg (clear radiator photo)'];
 
 async function call(path, body) {
   const response = await fetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -46,8 +46,9 @@ function latest(l) {
     <div class="live-grid">
       <div class="rp-card"><h3>${upload ? 'Extracted from the upload' : 'Starting point'}</h3>
         ${upload ? `<ul>${l.added.files.map(f => `<li><code>${esc(f)}</code></li>`).join('')}</ul>${(l.added.notes || []).map(n => `<p class="small">${esc(n)}</p>`).join('')}
-          <pre class="live-json">${esc(JSON.stringify(facts, null, 2))}</pre>` : '<p>The customer’s questionnaire (B-03 answers), stored as JSON. No documents yet.</p>'}</div>
+          <pre class="live-json">${esc(JSON.stringify(facts, null, 2))}</pre>` : '<p>The customer’s questionnaire (home B-05), stored as JSON. No documents yet.</p>'}</div>
       <div class="rp-card live-next ${esc(d.verdict)}">${nextStep(d)}
+        ${d.verdict_kind === 'unknown' && l.what_if.result_with_assumptions ? `<p class="live-assumed">With the standard assumptions: <span class="eval-verdict ${esc(l.what_if.result_with_assumptions.verdict)}">${esc(l.what_if.result_with_assumptions.verdict)}</span> · ${span(l.what_if.result_with_assumptions.flow_c, ' °C')}</p>` : ''}
         <h4>Still open (${open.length})</h4>${open.length && d.verdict_kind !== 'unknown' ? '<p class="small"><strong>Certain:</strong> none of these can change the verdict.</p>' : ''}
         <ul>${open.map(p => `<li>${esc(p.label)}: assumed ${esc(p.labels[p.values.indexOf(p.assumed)])}</li>`).join('')}</ul></div>
       <div class="rp-card"><h3>Technician report</h3><ol>${d.technician_checks.map(t => `<li>${esc(t)}</li>`).join('')}</ol>
@@ -65,9 +66,10 @@ function timeline(rows) {
 
 function render() {
   if (!state) { root.innerHTML = `<p class="eval-miss">${esc(message || 'Loading…')}</p>`; return; }
-  const controls = `<div class="live-controls">
+  const controls = `<div class="live-controls live-drop" data-live-drop>
       <label class="button primary live-upload ${!state.started || busy ? 'disabled' : ''}">Upload a document or photo<input type="file" class="sr-only" id="live-file" accept="application/pdf,image/jpeg,image/png,image/webp" ${!state.started || busy ? 'disabled' : ''}></label>
-      <button type="button" class="button secondary" data-start ${busy ? 'disabled' : ''}>${state.started ? 'Start again (empty workspace)' : 'Start the workspace'}</button></div>
+      <button type="button" class="button secondary" data-start ${busy ? 'disabled' : ''}>${state.started ? 'Start again (empty workspace)' : 'Start the workspace'}</button>
+      <span class="qc-drop-hint">${state.started ? 'or drag a file here' : ''}</span></div>
     <p class="small">Demo files in <code>data/customer/demo/</code>: ${DEMO_FILES.map(f => `<code>${esc(f)}</code>`).join(', ')}.</p>
     ${message ? `<p class="live-message" role="status">${esc(message)}</p>` : ''}`;
   root.innerHTML = controls + (state.started ? latest(state.latest) + timeline(state.timeline) : '<p>The workspace <code>data/demo/B-Live/</code> is empty.</p>');
@@ -78,14 +80,31 @@ root.addEventListener('click', event => {
   if (!b || busy) return;
   if (b.hasAttribute('data-start')) act('Starting an empty workspace', async () => { await call('/api/live/reset', {}); return call('/api/live/start', {}); });
 });
-root.addEventListener('change', event => {
-  if (event.target.id !== 'live-file' || busy) return;
-  const files = [...event.target.files];
+function upload(files) {
+  if (!files.length || busy || !state?.started) return;
   act(`Reading ${files.map(f => f.name).join(', ')}`, async () => {
     validateFiles(files);
     return call('/api/live/upload', { files: await Promise.all(files.map(filePayload)) });
   });
+}
+root.addEventListener('change', event => { if (event.target.id === 'live-file') upload([...event.target.files]); });
+// Drag and drop onto the upload area; anywhere else a dropped file must not open in the tab.
+root.addEventListener('dragover', event => {
+  const zone = event.target.closest('[data-live-drop]');
+  if (zone && state?.started) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; zone.classList.add('drag-over'); }
 });
+root.addEventListener('dragleave', event => {
+  const zone = event.target.closest('[data-live-drop]');
+  if (zone && !zone.contains(event.relatedTarget)) zone.classList.remove('drag-over');
+});
+root.addEventListener('drop', event => {
+  const zone = event.target.closest('[data-live-drop]');
+  if (!zone) return;
+  event.preventDefault(); zone.classList.remove('drag-over');
+  upload([...event.dataTransfer.files]);
+});
+window.addEventListener('dragover', event => { if (!event.target.closest?.('[data-live-drop]')) { event.preventDefault(); event.dataTransfer.dropEffect = 'none'; } });
+window.addEventListener('drop', event => { if (!event.target.closest?.('[data-live-drop]')) event.preventDefault(); });
 
 // Opened from the welcome page (?fresh=1): always start from an empty workspace with the questionnaire.
 if (new URLSearchParams(location.search).has('fresh')) {

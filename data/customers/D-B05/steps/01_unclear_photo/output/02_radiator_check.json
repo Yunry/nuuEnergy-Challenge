@@ -1,0 +1,37 @@
+{
+  "schema_version": "0.1",
+  "building_id": "D-B05",
+  "step": "02_radiator_check",
+  "inputs_as_ranges": {
+    "radiator_type": [
+      "11",
+      "22",
+      "33"
+    ]
+  },
+  "flow_temp_c": {
+    "required": [
+      42,
+      98
+    ],
+    "by_case": {
+      "11": [
+        60,
+        98
+      ],
+      "22": [
+        47,
+        72
+      ],
+      "33": [
+        42,
+        60
+      ]
+    }
+  },
+  "assumptions": [
+    "Mixed system, heat share per circuit unknown: radiators assumed to carry the full load (conservative)",
+    "Radiator size unknown: assumed 600 x 1000 mm",
+    "Radiator output vs temperature: EN 442, n = 1.3, 10 K spread"
+  ]
+}

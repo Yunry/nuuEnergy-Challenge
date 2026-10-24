@@ -1,6 +1,7 @@
-"""Build the demo customer data/customers/D-B03, the saved version of the live demo:
-step 0 B-03's questionnaire (yellow), step 1 the energy certificate PDF (still uncertain: radiators unknown),
-step 2 the clear radiator photo 05 (approved, green).
+"""Build the demo customer data/customers/D-B05, the saved version of the live demo:
+step 0 B-05's questionnaire (yellow: a decision is possible, the radiators are unknown), step 1 the unclear photo 07
+(nothing readable, unchanged), step 2 the clear radiator photo 05 (narrowed to "possible": green with the standard
+assumptions; only the bill-based heat load could still tip it).
 
 Files come from data/customer/demo/, their readings from data/customer/demo/extraction_register.json (the stand-in
 for AI extraction). Rebuild from scratch:  python3 scripts/build_demo_customer.py
@@ -15,10 +16,10 @@ sys.path.insert(0, str(ROOT / "src" / "decision_engine"))
 
 import customer_steps  # noqa: E402
 
-FOLDER = ROOT / "data" / "customers" / "D-B03"
-BASE = ROOT / "data" / "demo" / "B-03"
+FOLDER = ROOT / "data" / "customers" / "D-B05"
+BASE = ROOT / "data" / "demo" / "B-05"
 FILES = ROOT / "data" / "customer" / "demo"
-UPLOADS = [("energy_certificate", "energieausweis_b03_hamburg_1970_oel.pdf"), ("radiator_photo", "05_zweirohr-vermutet_kompakt.jpeg")]
+UPLOADS = [("unclear_photo", "07_unklar_bad-multiblock.jpeg"), ("clear_photo", "05_zweirohr-vermutet_kompakt.jpeg")]
 
 
 def main():

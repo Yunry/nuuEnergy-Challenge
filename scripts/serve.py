@@ -9,7 +9,7 @@ usage: python3 scripts/serve.py        -> http://127.0.0.1:4173   (PORT=4174 pyt
   GET  /api/evaluation  internal competition evaluation, shown at /evaluation.html
   GET  /api/customer/<id>/files, /api/customer/<id>/raw/<path>   list / open a customer's raw inputs (developer view)
   Live demo customer data/demo/B-Live (page /live.html), one saved step per upload:
-  GET  /api/live         its timeline and latest step      POST /api/live/start   step 00 from B-03's input
+  GET  /api/live         its timeline and latest step      POST /api/live/start   step 00 from B-05's questionnaire
   POST /api/live/upload  {files} -> next step              POST /api/live/reset   empty the folder
 """
 import base64
@@ -132,9 +132,12 @@ def live_state(folder=LIVE):
                        "what_if": json.loads((last / "what_if.json").read_text())}}
 
 
+LIVE_BASE = "B-05"  # the live demo starts from this home's questionnaire: a decision is possible, but not certain
+
+
 def live_start(folder=LIVE):
-    customer_input = {**json.loads((DEMO / "B-03" / "raw" / "customer_input.json").read_text()), "building_id": folder.name}
-    customer_steps.start(folder, customer_input, load_steps("B-03"), label="questionnaire")
+    customer_input = {**json.loads((DEMO / LIVE_BASE / "raw" / "customer_input.json").read_text()), "building_id": folder.name}
+    customer_steps.start(folder, customer_input, load_steps(LIVE_BASE), label="questionnaire")
     return live_state(folder)
 
 

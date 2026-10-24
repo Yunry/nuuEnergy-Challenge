@@ -36,13 +36,8 @@
     {
       "file": "05_zweirohr-vermutet_kompakt.jpeg",
       "sha256": "02ec264b9e4149fda718011ab1db06332fd055505cf5ece881f0cb18ff8a8bc6",
-      "note": "Clear radiator photo: panel type and pipe layout are readable; the size is estimated (no scale in the photo).",
+      "note": "Clear radiator photo: panel type and pipe layout are readable; the size is estimated (no scale in the photo). One photo says nothing about the rest of the heating system.",
       "facts": {
-        "heat_distribution": {
-          "value": "radiators",
-          "confidence": "high",
-          "evidence": "Panel radiator with thermostatic valve"
-        },
         "radiator_type": {
           "value": "22",
           "confidence": "medium",

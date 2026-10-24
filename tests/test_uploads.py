@@ -3,6 +3,7 @@
 run: python3 -m unittest discover -s tests -v
 """
 import base64
+import json
 import sys
 import tempfile
 import unittest
@@ -61,8 +62,9 @@ class SaveUploads(unittest.TestCase):
 
 
 class LiveDemo(unittest.TestCase):
-    """The demo story: questionnaire -> certificate PDF (still uncertain) -> radiator photo: clear 05 approves, unclear 07 not."""
-    PDF_NAME, CLEAR, UNCLEAR = "energieausweis_b03_hamburg_1970_oel.pdf", "05_zweirohr-vermutet_kompakt.jpeg", "07_unklar_bad-multiblock.jpeg"
+    """The demo story: B-05's questionnaire (possible, uncertain) -> unclear photo 07 (unchanged) -> clear photo 05
+    (narrowed: green with the standard assumptions, yellow only if the bill-based heat load is right)."""
+    CLEAR, UNCLEAR = "05_zweirohr-vermutet_kompakt.jpeg", "07_unklar_bad-multiblock.jpeg"
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -72,30 +74,25 @@ class LiveDemo(unittest.TestCase):
         self.tmp.cleanup()
 
     def upload_doc(self, name):
-        mime = "application/pdf" if name.endswith(".pdf") else "image/jpeg"
-        return live_upload(upload("B-Live", (name, mime, (DEMO_DOCS / name).read_bytes())), self.folder)
+        return live_upload(upload("B-Live", (name, "image/jpeg", (DEMO_DOCS / name).read_bytes())), self.folder)
 
-    def test_certificate_then_clear_photo_approves(self):
+    def test_unclear_photo_changes_nothing_then_clear_photo_narrows_to_possible(self):
         self.assertFalse(live_state(self.folder)["started"])
         with self.assertRaises(ai_extract.ExtractionError):
-            self.upload_doc(self.PDF_NAME)  # not started yet
-        self.assertEqual(live_start(self.folder)["timeline"][0]["verdict"], "yellow")
-        state = self.upload_doc(self.PDF_NAME)
-        self.assertEqual(state["latest"]["decision"]["verdict"], "yellow")  # radiators still unknown
-        self.assertIn("construction_year", state["latest"]["added"]["facts"])
-        state = self.upload_doc(self.CLEAR)
-        self.assertEqual([r["verdict"] for r in state["timeline"]], ["yellow", "yellow", "green"])
-        self.assertTrue((self.folder / "raw" / "photos" / self.CLEAR).exists())
+            self.upload_doc(self.CLEAR)  # not started yet
+        start = live_start(self.folder)["latest"]
+        self.assertEqual((start["decision"]["verdict"], start["flow"]["required"]), ("yellow", [42, 98]))
+        unclear = self.upload_doc(self.UNCLEAR)["latest"]
+        self.assertEqual(unclear["added"]["facts"], {})
+        self.assertEqual(unclear["flow"]["required"], [42, 98])
+        clear = self.upload_doc(self.CLEAR)["latest"]
+        self.assertEqual(clear["decision"]["verdict"], "yellow")
+        self.assertEqual(clear["flow"]["required"], [42, 61])
+        self.assertEqual(clear["what_if"]["result_with_assumptions"]["verdict"], "green")
+        self.assertEqual(json.loads((self.folder / "steps" / "02_05_zweirohr-vermutet_kompakt" / "processed" / "02_radiator_check.json")
+                                    .read_text())["fields"]["heat_distribution"]["value"], "mixed")  # one photo doesn't change the system
         self.assertFalse(live_reset(self.folder)["started"])
         self.assertFalse(self.folder.exists())
-
-    def test_unclear_photo_leaves_it_uncertain(self):
-        live_start(self.folder)
-        self.upload_doc(self.PDF_NAME)
-        state = self.upload_doc(self.UNCLEAR)
-        self.assertEqual(state["latest"]["decision"]["verdict"], "yellow")
-        self.assertEqual(state["latest"]["added"]["facts"], {})
-        self.assertIn("Unclear photo", state["latest"]["added"]["notes"][0])
 
     def test_register_reads_demo_files_by_content_only(self):
         facts, note = known_facts("renamed.jpg", (DEMO_DOCS / self.CLEAR).read_bytes())

@@ -1,0 +1,95 @@
+[
+  {
+    "step": 0,
+    "label": "questionnaire",
+    "files": [],
+    "facts": [],
+    "verdict": "yellow",
+    "verdict_kind": "unknown",
+    "load_kw": [
+      5.0,
+      13.2
+    ],
+    "flow_c": [
+      42,
+      98
+    ],
+    "saving_eur": [
+      764,
+      1205
+    ],
+    "open_inputs": [
+      "Heat load taken from",
+      "Heat demand per m² (W/m²)",
+      "Full-load hours per year",
+      "Hot water made by the boiler",
+      "Radiator type",
+      "Typical radiator length (height 600 mm)"
+    ],
+    "technician_checks": 5
+  },
+  {
+    "step": 1,
+    "label": "unclear_photo",
+    "files": [
+      "raw/photos/07_unklar_bad-multiblock.jpeg"
+    ],
+    "facts": [],
+    "verdict": "yellow",
+    "verdict_kind": "unknown",
+    "load_kw": [
+      5.0,
+      13.2
+    ],
+    "flow_c": [
+      42,
+      98
+    ],
+    "saving_eur": [
+      764,
+      1205
+    ],
+    "open_inputs": [
+      "Heat load taken from",
+      "Heat demand per m² (W/m²)",
+      "Full-load hours per year",
+      "Hot water made by the boiler",
+      "Radiator type",
+      "Typical radiator length (height 600 mm)"
+    ],
+    "technician_checks": 5
+  },
+  {
+    "step": 2,
+    "label": "clear_photo",
+    "files": [
+      "raw/photos/05_zweirohr-vermutet_kompakt.jpeg"
+    ],
+    "facts": [
+      "pipe_system",
+      "radiator_size_mm",
+      "radiator_type"
+    ],
+    "verdict": "yellow",
+    "verdict_kind": "unknown",
+    "load_kw": [
+      5.0,
+      13.2
+    ],
+    "flow_c": [
+      42,
+      61
+    ],
+    "saving_eur": [
+      764,
+      1205
+    ],
+    "open_inputs": [
+      "Heat load taken from",
+      "Heat demand per m² (W/m²)",
+      "Full-load hours per year",
+      "Hot water made by the boiler"
+    ],
+    "technician_checks": 4
+  }
+]

@@ -1,0 +1,62 @@
+{
+  "schema_version": "0.1",
+  "building_id": "D-B05",
+  "verdict": "yellow",
+  "verdict_kind": "unknown",
+  "summary": "A heat pump can very likely heat this house, but whether the existing radiators are big enough is still open. The bill and the house size point to different heat loads, so the bill should be checked first.",
+  "boundaries": [
+    {
+      "input": "radiator_rated_output_total_kw",
+      "flips_verdict": true,
+      "thresholds": [
+        {
+          "range": ">= 25.6",
+          "per_radiator": ">= 3.2",
+          "result": "green: runs at <= 55 C"
+        },
+        {
+          "range": "21.0-25.6",
+          "per_radiator": "2.62-3.2",
+          "result": "yellow: needs 55-60 C, higher running cost"
+        },
+        {
+          "range": "< 21.0",
+          "per_radiator": "< 2.62",
+          "result": "needs > 60 C: some radiators should be upgraded"
+        }
+      ],
+      "resolve_by": "homeowner",
+      "how": "Side photo of a typical radiator plus its height and width"
+    }
+  ],
+  "reasons": [
+    {
+      "type": "positive",
+      "text": "Two-pipe system: all radiators get water at the same temperature.",
+      "source": "pipe_system"
+    },
+    {
+      "type": "unknown",
+      "text": "The two heat-load estimates disagree (by area 5.0-7.5 kW, by bill 9.9-13.2 kW).",
+      "source": "heating_load_kw"
+    }
+  ],
+  "homeowner_can_provide": [
+    "Does the bill cover a full year and all heated rooms, and is any other heat source used?",
+    "Current flow temperature setting of the boiler, if known"
+  ],
+  "technician_checks": [
+    "Exact heat load (DIN EN 12831)",
+    "Room-by-room radiator sizing",
+    "Electrical capacity and meter cabinet",
+    "Outdoor unit placement, sound and permits"
+  ],
+  "assumptions": [
+    "Full-load hours 1800-2100 h (official approx. 2,000; range ours)",
+    "Hot-water share of the bill uncertain (unknown or solar thermal): subtract 0 to full per-person amount",
+    "Mixed system, heat share per circuit unknown: radiators assumed to carry the full load (conservative)",
+    "Radiator rating scaled by face area from 600 x 1000 mm (rough)",
+    "Radiator output vs temperature: EN 442, n = 1.3, 10 K spread",
+    "Heat pump also covers hot water, at the same JAZ as space heating"
+  ]
+}

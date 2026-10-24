@@ -145,7 +145,7 @@ function welcome() {
       <article class="entrance"><p class="entrance-kicker">2 · Just have a look</p><h2>Example homes and live demo</h2>
         <p>Five real, anonymised homes from the challenge, or watch the result change as documents are uploaded.</p>
         <div class="sample-list">${homes}</div>
-        <a class="button secondary live-entrance" href="/live.html?fresh=1">Live demo: certificate + radiator photo ${chevron}</a></article>
+        <a class="button secondary live-entrance" href="/live.html?fresh=1">Live demo: B-05 + radiator photos ${chevron}</a></article>
     </section>${assessmentHistory()}</main>`;
 }
 const sparkle = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4L12 3Z"/></svg>';
@@ -875,11 +875,7 @@ app.addEventListener('input', event => {
 app.addEventListener('change', event => {
   const el = event.target;
   if (el.id === 'evidence-files') { chooseFiles([...el.files]); return; }
-  if (el.dataset?.qcFile) {
-    const file = el.files[0]; if (!file) return;
-    if (el.dataset.qcFile === 'bill') { qcReadBill(qcRename(file, 'heating-bill')); return; }
-    radFiles[el.dataset.qcFile] = qcRename(file, `radiator-${el.dataset.qcFile}`); state.qc.photos[el.dataset.qcFile] = file.name; state.qc.error = ''; render(); return;
-  }
+  if (el.dataset?.qcFile) { qcTakeFile(el.dataset.qcFile, el.files[0]); return; }
   if (el.name && Object.hasOwn(state.answers, el.name)) {
     state.answers[el.name] = el.value;
     if (el.name === 'energy_carrier') { state.answers.unit = 'kwh'; state.answers.amount = ''; }
@@ -923,14 +919,35 @@ function chooseFiles(files) {
   render(); document.querySelector(extraction.error ? '#evidence-files' : '[data-extract]')?.focus();
   announce(extraction.error || `${chosenFiles.length} ${chosenFiles.length === 1 ? 'file ready' : 'files ready'}. Choose Find my home details to continue.`);
 }
+// A quick-check file (bill, or a radiator photo: valve / side) from the file button or dropped on its zone.
+function qcTakeFile(kind, file) {
+  if (!file) return;
+  const ok = file.type.startsWith('image/') || (kind === 'bill' && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)));
+  if (!ok) { state.qc.error = kind === 'bill' ? 'Please use a photo or a PDF of the bill.' : 'Please use a photo (JPG, PNG or WebP).'; render(); return; }
+  if (kind === 'bill') { qcReadBill(qcRename(file, 'heating-bill')); return; }
+  radFiles[kind] = qcRename(file, `radiator-${kind}`); state.qc.photos[kind] = file.name; state.qc.error = ''; render();
+  announce(`${kind === 'valve' ? 'Valve' : 'Side'} photo added: ${file.name}.`);
+}
+// Drag and drop: the upload zone and the quick-check photo zones accept files dropped from the computer.
+const DROP_ZONES = '#upload-drop-zone, [data-qc-drop]';
 app.addEventListener('dragover', event => {
-  const zone = event.target.closest('#upload-drop-zone');
-  if (zone) { event.preventDefault(); zone.classList.add('drag-over'); }
+  const zone = event.target.closest(DROP_ZONES);
+  if (zone) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; zone.classList.add('drag-over'); }
 });
-app.addEventListener('dragleave', event => event.target.closest('#upload-drop-zone')?.classList.remove('drag-over'));
+app.addEventListener('dragleave', event => {
+  const zone = event.target.closest(DROP_ZONES);
+  if (zone && !zone.contains(event.relatedTarget)) zone.classList.remove('drag-over');
+});
 app.addEventListener('drop', event => {
-  if (event.target.closest('#upload-drop-zone')) { event.preventDefault(); chooseFiles([...event.dataTransfer.files]); }
+  const zone = event.target.closest(DROP_ZONES);
+  if (!zone) return;
+  event.preventDefault(); zone.classList.remove('drag-over');
+  if (zone.id === 'upload-drop-zone') chooseFiles([...event.dataTransfer.files]);
+  else qcTakeFile(zone.dataset.qcDrop, event.dataTransfer.files[0]);
 });
+// A file dropped next to a zone must not open in the tab (which would leave the app).
+window.addEventListener('dragover', event => { if (!event.target.closest?.(DROP_ZONES)) { event.preventDefault(); event.dataTransfer.dropEffect = 'none'; } });
+window.addEventListener('drop', event => { if (!event.target.closest?.(DROP_ZONES)) event.preventDefault(); });
 app.addEventListener('toggle', event => {
   if (event.target.id === 'manual-home-details') homeDetailsOpen = event.target.open;
 }, true);

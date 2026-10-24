@@ -101,7 +101,8 @@ def run(system, heat_load, radiator_check, operating_cost):
     # what would decide an open verdict
     if radiators and kind == "unknown" and load["used"] and f["radiator_count"]:
         boundaries.append(radiator_boundary(load["used"][1], f["radiator_count"]))
-        homeowner.insert(0, "Side photo of one typical radiator, plus its height and width")
+        if f.get("radiator_type") is None or f.get("radiator_size_mm") is None:  # ask only while the radiators are unknown
+            homeowner.insert(0, "Side photo of one typical radiator, plus its height and width")
     if radiators and f["flow_temperature_c"] is None:
         homeowner.append("Current flow temperature setting of the boiler, if known")
     # missing basics that block a step

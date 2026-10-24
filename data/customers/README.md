@@ -17,28 +17,25 @@ customers/<id>/
   timeline.json, timeline.md       one row per step: verdict, load, water temperature, saving, open inputs
 ```
 
-## Demo: D-B03 (saved version of the live demo)
+## Demo: D-B05 (saved version of the live demo)
 
-Starts from B-03's questionnaire and adds the demo files from `data/customer/demo/`, read via
-`data/customer/demo/extraction_register.json` (stands in for AI extraction, so the demo is repeatable).
-See [D-B03/timeline.md](D-B03/timeline.md):
+Starts from B-05's questionnaire (2006, underfloor heating plus 8 radiators, gas) and adds the radiator photos from
+`data/customer/demo/`, read via `data/customer/demo/extraction_register.json` (stands in for AI extraction, so the demo
+is repeatable). See [D-B05/timeline.md](D-B05/timeline.md):
 
 | Step | Upload | Result |
 |---|---|---|
-| 0 | questionnaire (B-03 answers) | **yellow**, uncertain: 50–84 °C depending on the unknown radiators |
-| 1 | `energieausweis_b03_hamburg_1970_oel.pdf`: oil, 40,000 kWh/a (3-year mean), 1970, 200 m² | still **yellow**: the certificate says nothing about the radiators; asks for a radiator photo |
-| 2 | `05_zweirohr-vermutet_kompakt.jpeg`, a clear radiator photo: type 22, two-pipe, size estimated (no scale, illustrative) | **green, approved**: 51–54 °C, saving €4,185 a year; the 4 open inputs cannot change the verdict |
-
-With the unclear photo `07_unklar_bad-multiblock.jpeg` (towel radiator on a valve multi-block) nothing can be read,
-so the result stays yellow.
+| 0 | questionnaire (B-05) | **yellow**: a decision is possible but not certain; 42–98 °C, the radiators are unknown |
+| 1 | `07_unklar_bad-multiblock.jpeg`: towel radiator on a valve multi-block | unchanged: nothing can be read |
+| 2 | `05_zweirohr-vermutet_kompakt.jpeg`: clear photo, type 22, two-pipe, size estimated (no scale, illustrative) | **possible**: 42–61 °C, green with the standard assumptions; still yellow overall because the bill (9.9–13.2 kW) and the house size (5.0–7.5 kW) disagree, and at the bill's top value the water needs 61 °C |
 
 Rebuild: `python3 scripts/build_demo_customer.py`
 
 ## Live demo: data/demo/B-Live
 
 Welcome page → **Just have a look** → **Live demo** opens http://127.0.0.1:4173/live.html?fresh=1: an empty workspace
-(`data/demo/B-Live/`, git-ignored) with B-03's stored questionnaire and no documents. Upload the PDF, then photo 05
-(approved) or 07 (stays uncertain). Each upload becomes a step in `data/demo/B-Live/steps/` with the file, the JSON read
+(`data/demo/B-Live/`, git-ignored) with B-05's stored questionnaire and no documents. Upload photo 07 (unchanged), then
+photo 05 (narrowed to possible). Each upload becomes a step in `data/demo/B-Live/steps/` with the file, the JSON read
 from it, the new result and a technician report. Demo files are recognised by content via the register; any other file
 goes to the real AI extraction when `OPENAI_API_KEY` is set (`.env`). `/?demo=B-Live` opens the full result and
 what-if for the latest step.

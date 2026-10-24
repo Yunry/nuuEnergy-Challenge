@@ -1,0 +1,121 @@
+{
+  "params": [
+    {
+      "key": "load_basis",
+      "label": "Heat load taken from",
+      "values": [
+        "area",
+        "average",
+        "bill"
+      ],
+      "labels": [
+        "house size",
+        "average of both",
+        "energy bill"
+      ],
+      "assumed": "area",
+      "rule": "Bill and house size disagree: use the house size, since a bill can miss other heat sources or part of the year."
+    },
+    {
+      "key": "q_w_per_m2",
+      "label": "Heat demand per m² (W/m²)",
+      "values": [
+        40,
+        45,
+        50,
+        55,
+        60
+      ],
+      "labels": [
+        "40 W/m²",
+        "45 W/m²",
+        "50 W/m²",
+        "55 W/m²",
+        "60 W/m²"
+      ],
+      "assumed": 50,
+      "rule": "Middle of the 40-60 W/m² band for this building age and renovation."
+    },
+    {
+      "key": "full_load_hours",
+      "label": "Full-load hours per year",
+      "values": [
+        1800,
+        1850,
+        1900,
+        1950,
+        2000,
+        2050,
+        2100
+      ],
+      "labels": [
+        "1,800 h",
+        "1,850 h",
+        "1,900 h",
+        "1,950 h",
+        "2,000 h",
+        "2,050 h",
+        "2,100 h"
+      ],
+      "assumed": 2000,
+      "rule": "Official approximation: about 2,000 full-load hours."
+    },
+    {
+      "key": "hot_water_share",
+      "label": "Hot water made by the boiler",
+      "values": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9,
+        1.0
+      ],
+      "labels": [
+        "0%",
+        "10%",
+        "20%",
+        "30%",
+        "40%",
+        "50%",
+        "60%",
+        "70%",
+        "80%",
+        "90%",
+        "100%"
+      ],
+      "assumed": 0.4,
+      "rule": "Solar thermal typically covers about 60 % of hot water, so the boiler makes about 40 %."
+    }
+  ],
+  "result_with_assumptions": {
+    "verdict": "green",
+    "verdict_kind": "ready",
+    "load_kw": [
+      6.2,
+      6.2
+    ],
+    "flow_c": [
+      45,
+      45
+    ],
+    "jaz": [
+      3.5,
+      3.5
+    ],
+    "today_eur": 2970,
+    "heat_pump_eur": [
+      1765,
+      1765
+    ],
+    "saving_eur": [
+      1205,
+      1205
+    ]
+  }
+}

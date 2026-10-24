@@ -1,0 +1,38 @@
+{
+  "schema_version": "0.1",
+  "building_id": "D-B05",
+  "step": "01_heat_load",
+  "inputs_as_ranges": {
+    "heated_area_m2": [
+      125,
+      125
+    ],
+    "full_load_hours": [
+      1800,
+      2100
+    ]
+  },
+  "heating_load_kw": {
+    "by_area": [
+      5.0,
+      7.5
+    ],
+    "by_consumption": [
+      9.9,
+      13.2
+    ],
+    "consistent": false,
+    "used": [
+      5.0,
+      13.2
+    ],
+    "w_per_m2": [
+      40,
+      106
+    ]
+  },
+  "assumptions": [
+    "Full-load hours 1800-2100 h (official approx. 2,000; range ours)",
+    "Hot-water share of the bill uncertain (unknown or solar thermal): subtract 0 to full per-person amount"
+  ]
+}
