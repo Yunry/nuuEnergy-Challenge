@@ -12,7 +12,7 @@ The internal competition evaluation is at http://127.0.0.1:4173/evaluation.html 
 
 ## Scope
 
-English homeowner flow: welcome → home → heating → energy use → review → assessment. Optional fields and explicit unknown answers; five real sample homes; larger text; back/edit; tab-local session saving; summary download; printing; confirmation before clearing answers. No bill/photo upload or AI extraction is implemented yet. No hosting or deployment is required to run it locally.
+English homeowner flow: welcome → home → heating → energy use → review → assessment. Optional fields and explicit unknown answers; five real sample homes; larger text; back/edit; tab-local session saving; summary download; printing; confirmation before clearing answers. Optional PDF/photo extraction is available on the home step, followed by source evidence review and explicit selection before answers are populated. No hosting or deployment is required to run it locally.
 
 Sample homes are the demo customers' raw input (`data/demo/<id>/raw/customer_input.json`, served at `/api/samples`), which carries no development labels. Sample notes are preserved, and explicit wood-stove/solar-thermal mentions in these fixtures populate the related inputs; arbitrary homeowner text is not automatically interpreted.
 
@@ -40,7 +40,7 @@ Radiator ratings per type are placeholders until checked against manufacturer da
 - All questions can be left unknown; no countdown or timeout; corrections and back navigation preserve answers.
 - No animation-dependent interaction; respects reduced-motion preferences.
 - Confirmation dialog before clearing; no unnecessary collection of names, addresses or contact details.
-- Answers are stored only in sessionStorage for this tab, without remote submission. If storage is unavailable the in-memory flow still works. No third-party fonts, analytics or scripts.
+- Answers and confirmed extraction evidence are stored in sessionStorage for this tab; assessment answers are sent to the local Python server. Files chosen for AI extraction are sent through the local server to OpenAI only when Extract is clicked. If storage is unavailable the in-memory flow still works. No third-party fonts, analytics or scripts.
 
 W3C guidance used: https://www.w3.org/WAI/older-users/ and https://www.w3.org/WAI/tutorials/forms/ . These are design choices, not a claim of audited WCAG conformance. A real screen-reader pass and sessions with target users are still needed, including a measured completion time.
 
@@ -56,3 +56,58 @@ W3C guidance used: https://www.w3.org/WAI/older-users/ and https://www.w3.org/WA
 8. Run without external internet: manual input and locally served fixtures still work.
 
 The development server serves only the two HTML pages, the browser assets and the three JSON endpoints; it does not expose repository metadata or arbitrary files.
+
+
+## AI extraction
+
+The server loads `.env` automatically, preserving existing process environment variables. Set
+`OPENAI_API_KEY` in `.env`; optionally set `OPENAI_MODEL` (default `gpt-4.1-mini`). Restart the
+server after changing either value. No Python package installation is needed. Never use a
+browser-exposed key. `/api/ai-status` exposes only whether a key is configured, not its value
+or whether the upstream account has credits.
+
+On **Your home**, choose up to three PDF/JPEG/PNG/WebP files (10 MB combined) and click
+**Extract details**. PDF text/page images and photos go to OpenAI Responses, with a strict
+JSON schema matching the assessment fields. The request sets `store: false`; OpenAI's own
+API data-handling policies still apply. Original files are not written to disk or sessionStorage
+by the app. The UI explicitly discloses the destination before upload.
+
+Each non-null field shows its source filename, evidence and confidence. Only high-confidence fields without an existing answer start selected. Medium/low-confidence
+fields and fields that would overwrite existing answers start unchecked. Choose facts to use, then
+continue through the editable form and final review. AI extracts evidence; the existing Python
+engine retains calculation/verdict ownership. Missing facts remain unknown. Short-period
+consumption is never silently annualized or used as annual demand; combined utility bills
+must use heating-fuel consumption rather than household electricity.
+
+Confirmed evidence follows unchanged values into the processed engine inputs and downloaded
+summary. The engine retains low confidence for partial-year consumption even if AI labels its
+reading high confidence. Editing a value removes its association with the previous evidence.
+Observations outside structured fields are retained as notes for technician review; they do
+not become extra calculation rules.
+
+Invalid formats, oversize uploads, missing keys, rate limits, refusals, interrupted responses
+and network failures return actionable errors while manual assessment remains available.
+`scripts/ai_extract.py` implements the API boundary independently of the offline research
+extractor in `scripts/extract_energy_bills.py`; its filename-based fixtures are not used for
+live uploads. This is a localhost demo server, not a production authenticated upload service.
+
+Run `npm test` for engine, extraction and HTTP integration tests, and
+`node --test tests/extraction.test.js` for browser field-application checks. Tests mock OpenAI
+and do not spend API credits. HTTP integration tests require permission to bind localhost.
+
+
+### Guided assistance in the homeowner flow
+
+The welcome page offers an AI-assisted start and a manual alternative. The home step has a
+keyboard-accessible upload area with drag-and-drop, selected filenames and remove controls.
+File count, total size, duplicate names and supported formats are checked before sending.
+Files stay in memory across step changes; they are never persisted in sessionStorage.
+
+Reading feedback explains the wait; **Continue without waiting** lets the user proceed with
+manual entry and ignores the eventual response (the upstream request may still finish).
+Review cards show the fact first, with source evidence behind **See where this came from**.
+Existing answers and uncertain readings require deliberate selection. Warnings are expandable.
+After confirmation, a success message and **From your file** badges connect extracted facts
+to editable answers. A helper note carries that context through later steps. The result page
+has a direct **Add a bill or photo** action to resolve missing information without resetting
+existing answers. The manual home questions remain available in an expandable section.
