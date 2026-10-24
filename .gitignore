@@ -17,3 +17,5 @@ data/demo/*/raw/photos/*
 !data/demo/*/raw/photos/.gitkeep
 # Live demo customer: generated step by step from the browser (live.html), starts empty
 data/demo/B-Live/
+.vercel
+.env*
