@@ -9,7 +9,7 @@ export const SLOTS = ['Tomorrow, 10:00', 'Tomorrow, 16:00', 'The day after, 11:0
 
 const FUEL = { gas: 'natural gas', oil: 'heating oil', lpg: 'LPG', electric: 'electricity', district: 'district heating' };
 
-// Which key details are confirmed. Four of them decide how sure we are; the meter cabinet only affects cost.
+// Which key details are confirmed. Three of them decide how sure we are; the meter cabinet only affects cost.
 export function certaintyItems(answers, qc, evidence, sample) {
   const r = qc.res || emptyRes(), underfloor = answers.heat_distribution === 'underfloor';
   const ev = k => Boolean(evidence?.[k]);
@@ -17,7 +17,6 @@ export function certaintyItems(answers, qc, evidence, sample) {
     usage: qc.bill === 'confirmed' || ev('annual_consumption_kwh') || sample,
     radiator: underfloor || qc.rad === 'confirmed' || (ev('radiator_type') && ev('pipe_system')),
     outdoor: r.outdoor === 'yes',
-    docs: r.docs === 'confirmed' || ev('floor_area_m2') || ev('construction_year'),
   };
 }
 
@@ -77,11 +76,6 @@ function openItems(answers, qc, c, ctx) {
       <div class="cr-choice">${[['yes', 'Yes'], ['no', 'No'], ['unsure', 'Not sure']].map(([v, l]) => `<button type="button" class="qc-option ${r.outdoor === v ? 'selected' : ''}" data-cr-outdoor="${v}">${l}</button>`).join('')}</div>
       ${r.outdoor === 'unsure' ? '<p class="cr-small">That’s fine. A photo helps, or our technician will check it.</p>' : ''}
       <div class="cr-actions-inline">${fileButton('outdoor', r.outdoorPhoto ? '✓ Photo added' : '📷 Photo of the side of your house')}</div>`));
-  // Size and year
-  if (c.docs) rows.push(itemRow('done', 'Size and year of your home: from your documents'));
-  else if (r.docs === 'reading') rows.push(itemRow('open', 'Size and year of your home', '<p class="qc-reading" role="status"><span class="reading-dot" aria-hidden="true"></span> Reading your document…</p>'));
-  else if (r.docs === 'review' && r.docsFields) rows.push(itemRow('open', 'Size and year of your home', `<div class="qc-confirm"><p>We read ${r.docsFields.text}. Is that right?</p><div class="qc-confirm-actions"><button type="button" class="button primary" data-cr-docs="yes">Yes, that’s right</button><button type="button" class="button secondary" data-cr-docs="no">No</button></div></div>`));
-  else rows.push(itemRow('open', 'Size and year of your home: your estimate', `${aiAvailable === false ? '<p class="cr-small">Reading documents is switched off on this server.</p>' : `<div class="cr-actions-inline">${fileButton('docs', '📷 Energy certificate or floor plan', 'image/*,application/pdf')}</div>`}${r.error ? `<p class="qc-error" role="alert">${escape(r.error)}</p>` : ''}`));
   // Meter cabinet (cost only)
   rows.push(r.meterPhoto ? itemRow('done', 'Meter cabinet: photo received, our technician will look at it')
     : itemRow('open', 'Does your meter cabinet need an upgrade? This affects the cost.', `<div class="cr-actions-inline">${fileButton('meter', '📷 Photo of the meter cabinet')}</div>`));
@@ -107,7 +101,7 @@ export function customerResult(p, o, ctx) {
   const { answers, qc, evidence, sample, escape, money } = ctx;
   qc.res ||= emptyRes();
   const d = o.decision, v = headline(d), c = certaintyItems(answers, qc, evidence, sample);
-  const n = Object.values(c).filter(Boolean).length;
+  const n = Object.values(c).filter(Boolean).length, total = Object.keys(c).length;
   const videoBooked = (qc.video && qc.video !== 'no') || qc.res.booked.video;
   const videoText = qc.res.booked.video ? `📹 Video call: ${escape(qc.res.slot || qc.video)}` : qc.video && qc.video !== 'no' ? `📹 Video call: ${escape(qc.video)}` : '';
   const techAllowed = d.verdict === 'green' || qc.res.booked.videoDone;
@@ -115,7 +109,7 @@ export function customerResult(p, o, ctx) {
     <div class="cr-verdict ${v.cls}"><p class="eyebrow">${v.label}</p><h1 id="page-title" tabindex="-1">${v.title}</h1></div>
     <section class="cr-card"><h2>Why ${v.cls}?</h2><p class="cr-why">${escape(whyText(o, answers, qc))}</p></section>
     ${costBlock(p, o, money)}
-    <section class="cr-card"><h2>How sure are we?</h2><p class="cr-dots" aria-label="${n} of 4 key details confirmed">${'●'.repeat(n)}${'○'.repeat(4 - n)}</p><p>${n} of 4 key details confirmed.${n < 4 ? ' Each item below takes about a minute and makes the result more certain.' : ''}</p></section>
+    <section class="cr-card"><h2>How sure are we?</h2><p class="cr-dots" aria-label="${n} of ${total} key details confirmed">${'●'.repeat(n)}${'○'.repeat(total - n)}</p><p>${n} of ${total} key details confirmed.${n < total ? ' Each item below takes about a minute and makes the result more certain.' : ''}</p></section>
     <section class="cr-card"><h2>Make the result more certain</h2><ul class="cr-items">${openItems(answers, qc, c, ctx)}</ul></section>
     <section class="cr-card"><h2>Only a technician can check on site</h2><ul class="cr-tech">
       <li>How much heat your home needs, room by room – we can only estimate it</li>
