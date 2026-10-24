@@ -4,7 +4,7 @@
     {
       "file": "energieausweis_b03_hamburg_1970_oel.pdf",
       "sha256": "b0150c71aa3037dd3b0973ddb4046e92b8f7c04fd39002651e8bf29fc0926cea",
-      "note": "Energy certificate: confirms the bill, building age and area. Says nothing about the radiators.",
+      "note": "Energy certificate: building age, living area, fuel and the 3-year average consumption. Says nothing about the radiators.",
       "facts": {
         "energy_carrier": {
           "value": "oil",

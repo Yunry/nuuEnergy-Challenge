@@ -62,9 +62,9 @@ class SaveUploads(unittest.TestCase):
 
 
 class LiveDemo(unittest.TestCase):
-    """The demo story: B-05's questionnaire (possible, uncertain) -> unclear photo 07 (unchanged) -> clear photo 05
-    (narrowed: green with the standard assumptions, yellow only if the bill-based heat load is right)."""
-    CLEAR, UNCLEAR = "05_zweirohr-vermutet_kompakt.jpeg", "07_unklar_bad-multiblock.jpeg"
+    """The demo story: short questionnaire (not enough to decide) -> energy certificate (possible: radiator type open)
+    -> clear radiator photo 05 (green)."""
+    PDF, CLEAR, UNCLEAR = "energieausweis_b03_hamburg_1970_oel.pdf", "05_zweirohr-vermutet_kompakt.jpeg", "07_unklar_bad-multiblock.jpeg"
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -73,33 +73,40 @@ class LiveDemo(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def upload_doc(self, name):
-        return live_upload(upload("B-Live", (name, "image/jpeg", (DEMO_DOCS / name).read_bytes())), self.folder)
+    def upload_doc(self, name, mime="image/jpeg"):
+        return live_upload(upload("B-Live", (name, mime, (DEMO_DOCS / name).read_bytes())), self.folder)
 
-    def test_unclear_photo_changes_nothing_then_clear_photo_narrows_to_possible(self):
+    def test_certificate_makes_it_possible_then_radiator_photo_makes_it_green(self):
         self.assertFalse(live_state(self.folder)["started"])
         with self.assertRaises(ai_extract.ExtractionError):
             self.upload_doc(self.CLEAR)  # not started yet
         start = live_start(self.folder)["latest"]
-        self.assertEqual((start["decision"]["verdict"], start["flow"]["required"]), ("yellow", [42, 98]))
-        unclear = self.upload_doc(self.UNCLEAR)["latest"]
-        self.assertEqual(unclear["added"]["facts"], {})
-        self.assertEqual(unclear["flow"]["required"], [42, 98])
+        self.assertEqual((start["heat_load"]["used"], start["flow"]["required"]), (None, None))  # not enough to decide yet
+        pdf = self.upload_doc(self.PDF, "application/pdf")["latest"]
+        self.assertEqual(set(pdf["added"]["facts"]), {"energy_carrier", "annual_consumption_kwh", "consumption_full_year", "construction_year", "floor_area_m2"})
+        self.assertEqual((pdf["decision"]["verdict"], pdf["decision"]["verdict_kind"]), ("yellow", "unknown"))
+        self.assertEqual(pdf["what_if"]["result_with_assumptions"]["verdict"], "yellow")
+        self.assertEqual(pdf["cost"]["today"], 6800)  # oil from the certificate brings the oil price
         clear = self.upload_doc(self.CLEAR)["latest"]
-        self.assertEqual(clear["decision"]["verdict"], "yellow")
-        self.assertEqual(clear["flow"]["required"], [42, 61])
+        self.assertEqual((clear["decision"]["verdict"], clear["flow"]["required"]), ("green", [50, 52]))
         self.assertEqual(clear["what_if"]["result_with_assumptions"]["verdict"], "green")
-        self.assertEqual(json.loads((self.folder / "steps" / "02_05_zweirohr-vermutet_kompakt" / "processed" / "02_radiator_check.json")
-                                    .read_text())["fields"]["heat_distribution"]["value"], "mixed")  # one photo doesn't change the system
         self.assertFalse(live_reset(self.folder)["started"])
         self.assertFalse(self.folder.exists())
+
+    def test_unclear_photo_changes_nothing(self):
+        live_start(self.folder)
+        self.upload_doc(self.PDF, "application/pdf")
+        unclear = self.upload_doc(self.UNCLEAR)["latest"]
+        self.assertEqual(unclear["added"]["facts"], {})
+        self.assertEqual(unclear["decision"]["verdict_kind"], "unknown")
 
     def test_a_device_without_the_files_can_use_the_servers_demo_files(self):
         self.assertEqual({f["name"] for f in demo_files()} >= {self.CLEAR, self.UNCLEAR}, True)
         self.assertIsNone(demo_file("../../.env"))  # only files listed in the register
         live_start(self.folder)
+        live_use_demo({"name": self.PDF}, self.folder)
         state = live_use_demo({"name": self.CLEAR}, self.folder)
-        self.assertEqual(state["latest"]["flow"]["required"], [42, 61])
+        self.assertEqual(state["latest"]["decision"]["verdict"], "green")
         with self.assertRaises(ai_extract.ExtractionError):
             live_use_demo({"name": "secret.pdf"}, self.folder)
 

@@ -34,8 +34,17 @@ Rebuild: `python3 scripts/build_demo_customer.py`
 ## Live demo: data/demo/B-Live
 
 Welcome page → **Just have a look** → **Live demo** opens http://127.0.0.1:4173/live.html?fresh=1: an empty workspace
-(`data/demo/B-Live/`, git-ignored) with B-05's stored questionnaire and no documents. Upload photo 07 (unchanged), then
-photo 05 (narrowed to possible). Each upload becomes a step in `data/demo/B-Live/steps/` with the file, the JSON read
+(`data/demo/B-Live/`, git-ignored) with a short stored questionnaire (`data/customer/demo/questionnaire.json`: home B-03,
+16 radiators, two-pipe, partly renovated; building age, area, bill and fuel empty) and no documents.
+
+| Step | Upload | Result |
+|---|---|---|
+| 0 | questionnaire | not enough to decide: no heat load yet |
+| 1 | `energieausweis_b03_hamburg_1970_oel.pdf`: 1970, 200 m², oil, 40,000 kWh/a | **possible** (yellow): 16–18 kW, 49–81 °C depending on the radiator type; yellow (60 °C) with the standard assumptions |
+| 2 | `05_zweirohr-vermutet_kompakt.jpeg`: type 22, two-pipe, ~600 × 1400 mm | **green**: 50–52 °C |
+
+Tuned for the demo: 16 radiators (B-03 has 15), so step 1 reads "possible" rather than red with the standard
+assumptions. The unclear photo 07 is still a demo file and changes nothing. Each upload becomes a step in `data/demo/B-Live/steps/` with the file, the JSON read
 from it, the new result and a technician report. Demo files are recognised by content via the register; any other file
 goes to the real AI extraction when `OPENAI_API_KEY` is set (`.env`). The demo files live in git, so any host running the repo
 has them; on a phone or any other device, **Use this file** (live page) adds the server's copy, no file needed on the device. `/?demo=B-Live` opens the full result and

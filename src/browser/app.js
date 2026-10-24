@@ -149,7 +149,7 @@ function welcome() {
       <article class="entrance"><p class="entrance-kicker">2 · Just have a look</p><h2>Example homes and live demo</h2>
         <p>Five real, anonymised homes, a saved photo assessment, or a live demo where each upload updates the result.</p>
         <div class="sample-list">${homes}</div>
-        <a class="button secondary live-entrance" href="/live.html?fresh=1">Live demo: B-05 + radiator photos ${chevron}</a></article>
+        <a class="button secondary live-entrance" href="/live.html?fresh=1">Live demo: energy certificate + radiator photo ${chevron}</a></article>
     </section>${assessmentHistory()}</main>`;
 }
 const sparkle = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4L12 3Z"/></svg>';
@@ -1227,10 +1227,11 @@ async function openDemo() {
   } else if (id === 'B-Live') {
     try {
       const data = await demo(id);
-      assessment = { key: id, status: 'done', data };
+      // Same key ensureAssessment uses for an unchanged example, so it shows the workspace result instead of re-assessing the empty form.
+      assessment = { key: `demo:${id}`, status: 'done', data };
       whatIf = { processed: data.processed };
       state.answers = { ...empty(), building_id: id };
-      state.sample = true;
+      state.sample = true; state.sampleAnswers = JSON.stringify(state.answers);
       setStep(5);
       announce(`Live workspace ${id} loaded.`);
     } catch (e) {

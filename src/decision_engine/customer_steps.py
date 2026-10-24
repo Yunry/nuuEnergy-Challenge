@@ -20,6 +20,7 @@ import shutil
 from pathlib import Path
 
 import engine
+import prepare
 import scenarios
 
 PHOTO_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
@@ -45,6 +46,10 @@ def apply_facts(steps, facts):
         for step in steps.values():
             if key in step["fields"]:
                 step["fields"][key] = {"value": f["value"], "source": f"upload:{f['source_file']}", "confidence": f["confidence"], "evidence": f["evidence"]}
+    if "energy_carrier" in facts:  # the fuel price follows the fuel read from the upload
+        for step in steps.values():
+            if "fuel_price_eur_per_kwh" in step["reference_data"]:
+                step["reference_data"]["fuel_price_eur_per_kwh"] = prepare.FUEL_PRICE.get(facts["energy_carrier"]["value"], prepare.NO_PRICE)
     return steps
 
 

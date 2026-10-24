@@ -1,5 +1,5 @@
 // Live demo (live.html): a customer workspace, data/demo/B-Live, that grows by one saved step per upload. It starts
-// with B-05's stored questionnaire and no documents; each upload shows the JSON read from the file, the new result,
+// with a short stored questionnaire (home B-03: radiators known; year, area, bill and fuel empty) and no documents; each upload shows the JSON read from the file, the new result,
 // what to do next, and the timeline of all steps. /live.html?fresh=1 empties it and starts again.
 import { filePayload, validateFiles } from './extraction.js';
 
@@ -14,8 +14,13 @@ const span = (r, unit) => {
   return (r[0] === r[1] ? num(r[0]) : `${num(r[0])}–${num(r[1])}`) + unit;
 };
 const announce = text => { document.querySelector('#announcement').textContent = text; };
+// Mouse over (or tab/tap onto) a file shows a large preview: the photo itself, or page 1 of the PDF.
+const preview = (url, kind, label, inner) => `<span class="live-preview" tabindex="0">${inner}<span class="live-preview-pop" role="tooltip">${kind === 'pdf'
+  ? `<iframe src="${esc(url)}#page=1&toolbar=0&navpanes=0&view=FitH" title="Preview: ${esc(label)}" tabindex="-1"></iframe>`
+  : `<img src="${esc(url)}" alt="Preview: ${esc(label)}" loading="lazy">`}</span></span>`;
+const kindOf = name => (name.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image');
 // The demo story's files, in order. The server keeps them (data/customer/demo), so a phone can use them without having them.
-const STORY = [['07_unklar_bad-multiblock.jpeg', '1 · Unclear photo'], ['05_zweirohr-vermutet_kompakt.jpeg', '2 · Clear radiator photo']];
+const STORY = [['energieausweis_b03_hamburg_1970_oel.pdf', '1 · Energy certificate'], ['05_zweirohr-vermutet_kompakt.jpeg', '2 · Radiator photo']];
 
 function getHistory() {
   try {
@@ -64,7 +69,9 @@ function nextStep(d) {
   return `<h3>To settle it, upload</h3><ul>${asks.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`;
 }
 function latest(l) {
-  const d = l.decision, open = l.what_if?.params || [], [title, line] = VERDICT[d.verdict] || ['Assessment result', d.summary];
+  const d = l.decision, open = l.what_if?.params || [];
+  // Without a heat load (no area, age or bill yet) nothing is "possible" yet.
+  const [title, line] = !l.heat_load?.used ? ['Not enough information yet', d.summary] : VERDICT[d.verdict] || ['Assessment result', d.summary];
   const facts = l.added?.facts || {}, upload = (l.added?.files || []).length;
   return `<section class="live-latest"><div class="rp-top"><div class="rp-card rp-verdict ${esc(d.verdict)}"><p class="eyebrow">Step ${l.added?.step ?? 0} · ${esc(d.verdict)}</p>
       <h2>${title}</h2><p>${esc(line)}</p><p class="small">Saved in <code>${esc(l.folder)}/</code></p></div>
@@ -72,10 +79,10 @@ function latest(l) {
       <div><dt>Heat pump cost</dt><dd>${span(l.cost?.heat_pump, ' €')}</dd></div><div><dt>Saving / year</dt><dd class="wi-saving">${span(l.cost?.saving, ' €')}</dd></div></dl></div></div>
     <div class="live-grid">
       <div class="rp-card"><h3>${upload ? 'Extracted from the upload' : 'Starting point'}</h3>
-        ${upload ? `<ul>${(l.added?.files || []).map(f => `<li><code>${esc(f)}</code></li>`).join('')}</ul>${(l.added?.notes || []).map(n => `<p class="small">${esc(n)}</p>`).join('')}
-          <pre class="live-json">${esc(JSON.stringify(facts, null, 2))}</pre>` : '<p>The customer’s questionnaire (home B-05), stored as JSON. No documents yet.</p>'}</div>
+        ${upload ? `<ul>${(l.added?.files || []).map(f => `<li>${preview(`/api/customer/${encodeURIComponent(state.customer_id)}/${f}`, kindOf(f), f.split('/').at(-1), `<code>${esc(f.split('/').at(-1))}</code>`)}</li>`).join('')}</ul>${(l.added?.notes || []).map(n => `<p class="small">${esc(n.replace(/^[^:]+\.(pdf|jpe?g|png|webp): /i, ''))}</p>`).join('')}
+          <pre class="live-json">${esc(JSON.stringify(facts, null, 2))}</pre>` : '<p>The customer’s short questionnaire (home B-03), stored as JSON: 16 radiators, two-pipe, partly renovated, 2 persons. Building age, area, bill and fuel are still empty. No documents yet.</p>'}</div>
       <div class="rp-card live-next ${esc(d.verdict)}">${nextStep(d)}
-        ${d.verdict_kind === 'unknown' && l.what_if?.result_with_assumptions ? `<p class="live-assumed">With the standard assumptions: <span class="eval-verdict ${esc(l.what_if.result_with_assumptions.verdict)}">${esc(l.what_if.result_with_assumptions.verdict)}</span> · ${span(l.what_if.result_with_assumptions.flow_c, ' °C')}</p>` : ''}
+        ${d.verdict_kind === 'unknown' && l.what_if?.result_with_assumptions?.flow_c ? `<p class="live-assumed">With the standard assumptions: <span class="eval-verdict ${esc(l.what_if.result_with_assumptions.verdict)}">${esc(l.what_if.result_with_assumptions.verdict)}</span> · ${span(l.what_if.result_with_assumptions.flow_c, ' °C')}</p>` : ''}
         <h4>Still open (${open.length})</h4>${open.length && d.verdict_kind !== 'unknown' ? '<p class="small"><strong>Certain:</strong> none of these can change the verdict.</p>' : ''}
         <ul>${open.map(p => `<li>${esc(p.label)}: assumed ${esc(p.labels[p.values.indexOf(p.assumed)])}</li>`).join('')}</ul></div>
       <div class="rp-card"><h3>Technician report</h3><ol>${(d.technician_checks || []).map(t => `<li>${esc(t)}</li>`).join('')}</ol>
@@ -114,7 +121,7 @@ function demoPanel() {
   return `<section class="live-demo-files" aria-label="Demo files on this server"><h2>Demo files on this server</h2>
     <p class="small">No need to have them on this device: the server adds its own copy. Or upload your own file above.</p>
     <div class="live-demo-grid">${files.map(([f, label]) => `<article class="rp-card live-demo-file">
-      ${f.kind === 'pdf' ? '<span class="di-icon pdf" aria-hidden="true">PDF</span>' : `<img src="${esc(f.url)}" alt="${esc(label)}: ${esc(f.name)}" loading="lazy">`}
+      ${preview(f.url, f.kind === 'pdf' ? 'pdf' : 'image', f.name, f.kind === 'pdf' ? '<span class="di-icon pdf" aria-hidden="true">PDF</span>' : `<img src="${esc(f.url)}" alt="${esc(label)}: ${esc(f.name)}" loading="lazy">`)}
       <p class="live-demo-label">${esc(label)}</p><p class="small">${esc(f.note)}</p>
       <button type="button" class="button ${used.has(f.name) ? 'secondary' : 'primary'}" data-demo-file="${esc(f.name)}" ${!state?.started || busy ? 'disabled' : ''}>${used.has(f.name) ? '✓ Used · use again' : 'Use this file'}</button></article>`).join('')}</div></section>`;
 }

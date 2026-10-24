@@ -1,0 +1,19 @@
+{
+  "building_id": "B-Live",
+  "construction_year": null,
+  "floor_area_m2": null,
+  "renovation_status": "partially",
+  "heat_distribution": "radiators",
+  "annual_consumption_kwh": null,
+  "consumption_full_year": null,
+  "energy_carrier": null,
+  "persons_in_household": 2,
+  "hot_water_via_heating": true,
+  "flow_temperature_c": null,
+  "pipe_system": "two-pipe",
+  "radiator_count": 16,
+  "radiator_type": null,
+  "other_heat_source": null,
+  "solar_thermal": null,
+  "building_notes": null
+}

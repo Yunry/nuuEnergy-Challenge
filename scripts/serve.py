@@ -143,7 +143,7 @@ def save_uploads(body, demo=DEMO):
     return {"customer_id": customer_id, "saved": saved, "duplicates": duplicates}
 
 
-# Live demo: Start adds B-05's questionnaire as step 00, every upload adds the next step.
+# Live demo: Start adds the stored questionnaire as step 00, every upload adds the next step.
 LIVE = DEMO / "B-Live"
 REGISTER = ROOT / "data" / "customer" / "demo" / "extraction_register.json"  # readings of the demo upload files
 
@@ -182,7 +182,9 @@ def live_state(folder=LIVE):
                        "what_if": json.loads((last / "what_if.json").read_text())}}
 
 
-LIVE_BASE = "B-05"  # the live demo starts from this home's questionnaire: a decision is possible, but not certain
+LIVE_QUESTIONNAIRE = REGISTER.parent / "questionnaire.json"
+# Home B-03's short form: year, area, bill and fuel empty (the energy certificate adds them). Tuned: 16 radiators
+# (B-03 has 15), so the certificate gives "possible" (yellow at 60 C with the standard assumptions) and the photo green.
 
 
 def live_start(folder_or_body=None, folder=None, register=REGISTER):
@@ -196,11 +198,9 @@ def live_start(folder_or_body=None, folder=None, register=REGISTER):
         body = None
         folder = Path(folder) if folder is not None else LIVE
 
-    input_file = DEMO / LIVE_BASE / "raw" / "customer_input.json"
-    if not input_file.is_file():
-        input_file = FIXTURE_DEMO / LIVE_BASE / "raw" / "customer_input.json"
-    customer_input = {**json.loads(input_file.read_text()), "building_id": folder.name}
-    customer_steps.start(folder, customer_input, load_steps(LIVE_BASE), label="questionnaire")
+    customer_input = {**json.loads(LIVE_QUESTIONNAIRE.read_text()), "building_id": folder.name}
+    intake.check_questionnaire(customer_input)
+    customer_steps.start(folder, customer_input, prepare.run(customer_input), label="questionnaire")
     if isinstance(body, dict) and body.get("history"):
         for item in body["history"]:
             if item.get("type") == "demo" or item.get("name") in {f["name"] for f in demo_files(register)}:

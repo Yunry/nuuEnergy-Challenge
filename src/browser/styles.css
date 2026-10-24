@@ -520,12 +520,12 @@ button:disabled { opacity: .6; cursor: default; }
 .live-latest .rp-verdict h2 { font-size: 1.3rem; margin: .2rem 0 .4rem; }
 .live-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1rem 0; }
 .live-grid h3 { font-size: 1rem; margin: 0 0 .5rem; } .live-grid h4 { font-size: .85rem; margin: .8rem 0 .3rem; }
-.live-grid li, .live-grid p { font-size: .85rem; }
+.live-grid li, .live-grid p { font-size: .85rem; overflow-wrap: anywhere; }
 .live-facts { list-style: none; padding: 0; }
 .live-json { font-size: .72rem; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: .6rem; overflow-x: auto; max-height: 22rem; margin: .4rem 0 0; }
 .live-assumed { font-size: .88rem; background: var(--paper); border-radius: 6px; padding: .4rem .6rem; }
 .live-next { border-top: 4px solid #e6c75f; } .live-next.green { border-top-color: #8fb07f; } .live-next.red { border-top-color: #d9826a; }
-@media (max-width: 900px) { .live-grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .live-grid { grid-template-columns: minmax(0, 1fr); } }
 /* Evidence remains visible across uploads; disagreements require an explicit choice. */
 .evidence-conflicts { border: 1px solid #c7a15e; background: #fff9e9; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; }
 .evidence-conflicts > p { font-size: .85rem; }
@@ -668,3 +668,13 @@ button:disabled { opacity: .6; cursor: default; }
 .live-demo-file img { width: 100%; height: 170px; object-fit: cover; border-radius: 8px; background: var(--paper); }
 .live-demo-label { font-weight: 700; margin: 0; }
 .live-demo-file .button { margin-top: auto; }
+/* Hover/focus preview of a demo or uploaded file: centred on screen, never under the pointer, so it cannot flicker. */
+.live-preview { position: relative; display: inline-block; vertical-align: top; cursor: zoom-in; border-radius: 8px; }
+.live-demo-file .live-preview { display: block; }
+.live-preview:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.live-preview-pop { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 50; pointer-events: none; opacity: 0; transition: opacity .15s ease;
+  background: var(--white); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, .25); padding: .4rem; }
+/* Opacity only, not visibility: the browser's PDF viewer renders page 1 while hidden, so the preview opens instantly. */
+.live-preview:hover .live-preview-pop, .live-preview:focus .live-preview-pop { opacity: 1; }
+.live-demo-file .live-preview-pop img, .live-preview-pop img { display: block; width: auto; height: auto; max-width: min(90vw, 720px); max-height: 80vh; object-fit: contain; border-radius: 8px; }
+.live-preview-pop iframe { display: block; width: min(90vw, 560px); height: 80vh; border: 0; border-radius: 8px; background: var(--white); }
