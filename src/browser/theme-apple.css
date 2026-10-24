@@ -109,4 +109,3 @@ input::placeholder { color: #a1a1a6; }
 .hero-start { margin-top: 1.4rem; min-height: 56px; padding-inline: 2rem; font-size: 1.1rem; }
 
 .view-switch button.mode-locked { color: #a1a1a6; cursor: not-allowed; }
-.view-switch button.mode-locked::before { content: '🔒 '; font-size: .75em; }

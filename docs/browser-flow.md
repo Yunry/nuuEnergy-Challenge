@@ -30,14 +30,14 @@ illustrative assumptions and do not represent a fresh AI extraction.
 
 ### View modes (header switch)
 
-Next to **Larger text** a switch picks the view: **Clean** (customer view), **Clean + Tech** (default while developing) or
+Next to **Larger text** a switch picks the view: **Clean** (customer view), **Customer + Tech** (default while developing) or
 **Full tech details** (developer view); the choice is kept in the tab. So far it changes the result page: the customer view shows only the
 judgement (colour, yearly saving, one plain-language paragraph) and three or four suggestions that fit the colour:
 next steps when green, what to change when red, which information would settle it when yellow. The developer view
 is the detailed page (four steps with equations, inputs with evidence, what-if sliders, checks). The customer view also has a chart
 of the yearly heating cost: today's cost against the heat pump, whose lighter band is the min–max range over what
 is still open, with the saving marked between them. When yellow it offers two option cards (add a suggested file,
-or request a video call; the prototype books nothing); when red the changes appear as keyword cards. Clean + Tech
+or request a video call; the prototype books nothing); when red the changes appear as keyword cards. Customer + Tech
 shows both side by side (stacked on narrow screens). The review step ("Check your answers") has the same modes: its developer view shows the input space (every raw input of the customer folder as a file tile: questionnaire JSON, PDFs, photos, AI extraction), the extracted uniform data the engine will use (field, value, confidence, source, evidence), and the four decision steps with their equations computed from that data. Other pages are the same in every mode for now.
 
 ### Confirm and what-if (after the first result)
