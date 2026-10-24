@@ -28,7 +28,7 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-def create_verbrauchsausweis_b03(filename="data/raw/energy_bills/energieausweis_b03_hamburg_1970_oel.pdf"):
+def create_verbrauchsausweis_b03(filename="data/customer/verbrauchsausweis/energieausweis_b03_hamburg_1970_oel.pdf"):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     doc = SimpleDocTemplate(
         filename,
