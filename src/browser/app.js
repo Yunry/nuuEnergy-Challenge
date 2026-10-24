@@ -60,11 +60,14 @@ function resetActive() {
   homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' };
   returnToReview = false; editSnapshot = null; clearTimeout(whatIfTimer);
 }
+// crypto.randomUUID exists only on HTTPS or localhost; a phone opening http://<laptop-ip> needs the fallback.
+const newId = () => (crypto.randomUUID ? crypto.randomUUID()
+  : [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join(''));
 function rememberAssessment() {
   if (assessment.status !== 'done' || state.step < 5) return;
   const key = sampleUnchanged() ? `demo:${state.answers.building_id}` : JSON.stringify({ ...toCustomerInput(values()), extraction_evidence: evidencePayload() });
   if (assessment.key !== key) return;
-  if (!state.checkId) { state.checkId = crypto.randomUUID(); save(); }
+  if (!state.checkId) { state.checkId = newId(); save(); }
   const existing = completedChecks.find(x => x.id === state.checkId);
   const entry = JSON.parse(JSON.stringify({ id: state.checkId, date: existing?.date || new Date().toISOString(),
     state, assessment, whatIf: whatIf.status === 'done' ? whatIf : null }));
@@ -268,8 +271,8 @@ function formPage() {
   if (state.step === 4 && state.mode === 'developer') return `<main id="main" class="result-main rp">${progress()}<h1 id="page-title" tabindex="-1">Inputs and how they are used</h1>${devInputPanel()}
     <div class="form-actions"><button type="button" class="back-button" data-go="3">← Back</button><button type="button" class="button primary" data-go="5">See my assessment ${chevron}</button></div></main>`;
   if (state.step === 4 && state.mode === 'both') return `<main id="main" class="result-main split">${progress()}<div class="split-panes">
-    <section class="pane pane-customer" aria-label="Customer view"><p class="pane-label">Customer view</p>${panel}</section>
-    <section class="pane pane-dev rp" aria-label="Developer view"><p class="pane-label">Developer view</p>${devInputPanel()}</section></div></main>`;
+    <section class="pane pane-customer" aria-label="Clean mode"><p class="pane-label">Clean mode</p>${panel}</section>
+    <section class="pane pane-dev rp" aria-label="Full tech details"><p class="pane-label">Full tech details</p>${devInputPanel()}</section></div></main>`;
   return `<main id="main" class="flow-main">${progress()}<div class="flow-layout">${panel}<aside class="flow-aside"><div class="encouragement"><span class="aside-kicker">A little reassurance</span><h2>You don’t need to be an expert.</h2><p>“I’m not sure” is a useful answer, too. We’ll tell you which details a heating professional can help with.</p><hr><p class="small">Your answers stay in this tab. You can go back without losing them.</p></div><p class="prototype-note">This is an initial indication, not a final design or an installation quote.</p></aside></div></main>`;
 }
 // Developer view of the inputs (review step): upper = every raw input as a file tile, middle = the extracted, uniform
@@ -325,8 +328,10 @@ async function runAssessment(key, input) {
   assessment = { key, status: 'loading', data: null };
   try {
     const data = await (key.startsWith('demo:') ? demo(key.slice(5)) : assess(input));
-    if (assessment.key === key) { assessment = { key, status: 'done', data }; rememberAssessment(); save(); }
+    if (assessment.key === key) assessment = { key, status: 'done', data };
   } catch { if (assessment.key === key) assessment = { key, status: 'error', data: null }; }
+  // The history is optional: if saving it fails, the result is still shown.
+  if (assessment.status === 'done' && assessment.key === key) { try { rememberAssessment(); save(); } catch { /* history only */ } }
   if (state.step === 4 && assessment.key === key) { refreshDevInput(); return; }
   if (state.step >= 5 && assessment.key === key) {
     render(); document.querySelector('#page-title')?.focus();
@@ -443,8 +448,8 @@ function resultPage() {
   if (state.mode === 'customer') return `<main id="main" class="result-main cv-main">${top}${crView(p, o)}</main>`;
   if (state.mode === 'developer') return `<main id="main" class="result-main rp">${top}${developerView(p, o, true)}</main>`;
   return `<main id="main" class="result-main split">${top}<div class="split-panes">
-    <section class="pane pane-customer" aria-label="Customer view"><p class="pane-label">Customer view</p>${crView(p, o)}</section>
-    <section class="pane pane-dev rp" aria-label="Developer view"><p class="pane-label">Developer view</p>${developerView(p, o, false)}</section></div></main>`;
+    <section class="pane pane-customer" aria-label="Clean mode"><p class="pane-label">Clean mode</p>${crView(p, o)}</section>
+    <section class="pane pane-dev rp" aria-label="Full tech details"><p class="pane-label">Full tech details</p>${developerView(p, o, false)}</section></div></main>`;
 }
 // Developer view: the detailed result (decision, four steps, inputs with evidence, what-if, checks).
 function developerView(p, o, mainHeading) {
@@ -1142,12 +1147,12 @@ app.addEventListener('click', async event => {
   if (button.hasAttribute('data-print')) window.print();
   if (button.hasAttribute('data-download')) downloadSummary();
 });
-// View switch: customer view, developer view, or both side by side (result page for now).
+// View switch: Clean mode (customer view), Full tech details (developer view), or both side by side.
 document.querySelector('.view-switch').addEventListener('click', event => {
   const b = event.target.closest('[data-mode]');
   if (!b || b.dataset.mode === state.mode) return;
   state.mode = b.dataset.mode; save(); render();
-  announce({ customer: 'Customer view.', developer: 'Developer view.', both: 'Customer and developer views side by side.' }[state.mode]);
+  announce({ customer: 'Clean mode.', developer: 'Full tech details.', both: 'Clean mode and full tech details side by side.' }[state.mode]);
 });
 document.querySelector('#text-size').addEventListener('click', () => {
   state.larger = !state.larger; document.documentElement.classList.toggle('larger-text', state.larger);
