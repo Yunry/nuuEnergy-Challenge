@@ -5,6 +5,10 @@ Writes output/01_heat_load.json with keys:
   inputs_as_ranges: {heated_area_m2: [min, max], full_load_hours: [min, max]}
   heating_load_kw:  {by_area, by_consumption, consistent, used, w_per_m2}  (ranges as [min, max], unknown = None)
   assumptions:      non-official choices made for this building
+
+Optional "pinned" dict on either step input fixes an uncertain quantity to one value (used by scenarios.py
+for what-if runs): q_w_per_m2, heated_share, hot_water_share (0-1 of the per-person amount), and
+load_basis ("area", "bill" or "average") to pick the load when both estimates exist.
 """
 
 FOSSIL_BOILERS = ("gas", "oil", "lpg")
@@ -52,10 +56,12 @@ def w_per_m2_band(year, renovation, assumptions):
     return [40, 120]
 
 
-def heated_area(fields, assumptions):
+def heated_area(fields, assumptions, pinned):
     floor = as_range(fields["floor_area_m2"])
     if floor is None:
         return None
+    if "heated_share" in pinned:
+        return [floor[0] * pinned["heated_share"], floor[1] * pinned["heated_share"]]
     unheated = fields.get("unheated_area", {}).get("value")
     if unheated is None:
         return floor
@@ -65,16 +71,19 @@ def heated_area(fields, assumptions):
     return [UNHEATED_SHARE * floor[0], floor[1]]
 
 
-def by_area(step, assumptions):
+def by_area(step, assumptions, pinned):
     f = step["fields"]
-    area = heated_area(f, assumptions)
+    area = heated_area(f, assumptions, pinned)
     if area is None:
         return None, None
-    band = w_per_m2_band(f["construction_year"]["value"], f["renovation_status"]["value"], assumptions)
+    if "q_w_per_m2" in pinned:
+        band = [pinned["q_w_per_m2"]] * 2
+    else:
+        band = w_per_m2_band(f["construction_year"]["value"], f["renovation_status"]["value"], assumptions)
     return area, [area[0] * band[0] / 1000, area[1] * band[1] / 1000]
 
 
-def by_consumption(step, assumptions):
+def by_consumption(step, assumptions, pinned):
     f, ref = step["fields"], step["reference_data"]
     hours = ref["full_load_hours"]["value"]
     consumption = as_range(f["annual_consumption_kwh"])
@@ -94,7 +103,9 @@ def by_consumption(step, assumptions):
     per_person = ref["hot_water_kwh_per_person"]["value"]
     water_max = persons[1] * per_person
     hot_water = f["hot_water_via_heating"]["value"]
-    if hot_water is False:
+    if "hot_water_share" in pinned:
+        water = [persons[0] * per_person * pinned["hot_water_share"], water_max * pinned["hot_water_share"]]
+    elif hot_water is False:
         water = [0, 0]
     elif hot_water is None or f["solar_thermal"]["value"] is True:
         water = [0, water_max]
@@ -129,10 +140,18 @@ def rounded(r, digits):
 
 def run(area_step, consumption_step):
     assumptions = []
-    area, area_kw = by_area(area_step, assumptions)
-    hours, cons_kw = by_consumption(consumption_step, assumptions)
+    pinned = {**area_step.get("pinned", {}), **consumption_step.get("pinned", {})}
+    area, area_kw = by_area(area_step, assumptions, pinned)
+    hours, cons_kw = by_consumption(consumption_step, assumptions, pinned)
     other = consumption_step["fields"]["other_heat_source"]["value"]
     consistent, used = cross_check(area_kw, cons_kw, other, assumptions)
+    basis = pinned.get("load_basis")
+    if basis == "area" and area_kw:
+        used = area_kw
+    elif basis == "bill" and cons_kw:
+        used = cons_kw
+    elif basis == "average" and area_kw and cons_kw:
+        used = [(area_kw[0] + cons_kw[0]) / 2, (area_kw[1] + cons_kw[1]) / 2]
 
     floor = as_range(area_step["fields"]["floor_area_m2"])
     w_per_m2 = None

@@ -1,12 +1,12 @@
-import { assess, demo, toCustomerInput } from './assessment.js';
+import { assess, demo, scenarios, toCustomerInput } from './assessment.js';
 
 const app = document.querySelector('#app');
 const storageKey = 'nuu-home-check-v1';
 const empty = () => ({ construction_year: '', floor_area_m2: '', renovation_status: 'unknown', energy_carrier: 'unknown', heat_distribution: 'unknown', amount: '', unit: 'kwh', consumption_full_year: 'unknown', persons_in_household: '', hot_water_via_heating: 'unknown', flow_temperature_c: '', pipe_system: 'unknown', radiator_count: '', radiator_type: 'unknown', other_heat_source: 'unknown', solar_thermal: 'unknown', building_notes: '', building_id: 'HOME' });
-let state = { step: 0, answers: empty(), larger: false, sample: false };
+let state = { step: 0, answers: empty(), larger: false, sample: false, confirm: {} };
 try {
   const saved = JSON.parse(sessionStorage.getItem(storageKey));
-  if (saved?.answers && Number.isInteger(saved.step) && saved.step >= 0 && saved.step <= 5) state = { ...state, ...saved, answers: { ...empty(), ...saved.answers } };
+  if (saved?.answers && Number.isInteger(saved.step) && saved.step >= 0 && saved.step <= 7) state = { ...state, ...saved, answers: { ...empty(), ...saved.answers } };
 } catch { /* Storage is optional; the flow still works in memory. */ }
 let errors = {}, returnToReview = false, editSnapshot = null, samples = [], sampleError = '';
 const steps = ['Your home', 'Your heating', 'Your energy use', 'Check your answers'];
@@ -25,7 +25,7 @@ function save() { try { sessionStorage.setItem(storageKey, JSON.stringify(state)
 function announce(text) { document.querySelector('#announcement').textContent = text; }
 function setStep(step, push = true) {
   state.step = step; errors = {}; save();
-  if (push) history.pushState({ step }, '', step ? `#${step === 5 ? 'result' : 'step-' + step}` : location.pathname);
+  if (push) history.pushState({ step }, '', step ? `#${{ 5: 'result', 6: 'confirm', 7: 'what-if' }[step] || 'step-' + step}` : location.pathname);
   render(); document.querySelector('#page-title')?.focus(); window.scrollTo(0, 0);
 }
 window.addEventListener('popstate', event => setStep(Number.isInteger(event.state?.step) ? event.state.step : 0, false));
@@ -114,7 +114,7 @@ async function runAssessment(key, input) {
     const data = await (key.startsWith('demo:') ? demo(key.slice(5)) : assess(input));
     if (assessment.key === key) assessment = { key, status: 'done', data };
   } catch { if (assessment.key === key) assessment = { key, status: 'error', data: null }; }
-  if (state.step === 5 && assessment.key === key) {
+  if (state.step >= 5 && assessment.key === key) {
     render(); document.querySelector('#page-title')?.focus();
     announce(assessment.status === 'done' ? 'Your first assessment is ready.' : 'The assessment could not be completed.');
   }
@@ -209,9 +209,17 @@ function costBars(cost, fuel) {
     + `<div class="rp-bar"><span>Heat pump</span><div class="rp-track"><div class="rp-fill hp" style="width:${w(lo)}"></div><div class="rp-fill hp-range" style="left:${w(lo)};width:${w(hi - lo)}"></div></div><strong>${euros(cost.heat_pump)}</strong></div></div>`;
 }
 
-function resultPage() {
+// Starts the assessment for the current answers if needed; true once its result is ready.
+function ensureAssessment() {
   const input = toCustomerInput(values()), key = sampleUnchanged() ? `demo:${state.answers.building_id}` : JSON.stringify(input);
-  if (assessment.key !== key) runAssessment(key, input);
+  if (assessment.key !== key) {
+    if (state.confirmKey !== key) { state.confirm = {}; state.confirmKey = key; whatIf = { processed: null }; save(); }
+    runAssessment(key, input);
+  }
+  return assessment.status === 'done';
+}
+function resultPage() {
+  ensureAssessment();
   const top = '<div class="result-topline"><button class="back-button" data-go="4">← Review my answers</button><span>YOUR FIRST ASSESSMENT</span></div>';
   if (assessment.status === 'loading') return `<main id="main" class="result-main">${top}<section class="verdict-panel" aria-busy="true"><div><h1 id="page-title" tabindex="-1">Checking your answers…</h1><p class="lead">This usually takes a moment.</p></div></section></main>`;
   if (assessment.status === 'error') return `<main id="main" class="result-main">${top}<section class="verdict-panel yellow"><div><h1 id="page-title" tabindex="-1">We couldn’t complete the check.</h1><p class="lead">The calculation did not respond. Your answers are still saved in this tab.</p><div class="result-actions"><button class="button primary" data-retry-assess>Try again</button></div></div></section></main>`;
@@ -228,17 +236,148 @@ function resultPage() {
     <section class="rp-layer" aria-label="How it was calculated"><p class="rp-layer-label">4 steps</p><ol class="rp-steps">${stepCards(p, o).map((x, i) => `<li class="rp-card rp-step"><p class="rp-num">Step ${i + 1}</p><h2>${x.title}</h2><p>${escape(x.sentence)}</p><code class="rp-eq">${escape(x.equation)}</code><p class="rp-result">${escape(x.result)}</p></li>`).join('')}</ol></section>
     <div class="rp-links" aria-hidden="true"><span>↑</span><span>↑</span><span>↑</span><span>↑</span></div>
     <section class="rp-layer" aria-label="Inputs and evidence"><p class="rp-layer-label">Inputs & evidence</p><div class="rp-inputs">${INPUTS.map(col => `<ul class="rp-card">${col.map(x => inputItem(p, x)).join('')}</ul>`).join('')}</div></section>
+    <div class="result-actions"><button class="button primary" data-go="6">Check and complete my details ${chevron}</button><button class="reset-button" data-reset>Start a new check</button></div></main>`;
+}
+// Confirm page: the customer approves, corrects or fills in every input the engine used.
+const CONFIRM = [
+  ['Your home', [['floor_area_m2', 'Floor area', 'number', 'm²'], ['construction_year', 'Year built', 'number', ''], ['renovation_status', 'Insulation improvements', 'select', labels.renovation_status],
+    ['unheated_area', 'Unheated area (0 if none)', 'number', 'm²']]],
+  ['Your energy use', [['annual_consumption_kwh', 'Energy used in a full year', 'number', 'kWh'], ['energy_carrier', 'Energy source', 'select', labels.energy_carrier],
+    ['persons_in_household', 'People at home', 'number', ''], ['hot_water_via_heating', 'Boiler also heats tap water', 'yesno'], ['solar_thermal', 'Solar hot-water panels', 'yesno'],
+    ['other_heat_source', 'Another heat source, e.g. a stove', 'yesno']]],
+  ['Your heating', [['heat_distribution', 'Room heating', 'select', labels.heat_distribution], ['radiator_count', 'Number of radiators', 'number', ''],
+    ['radiator_type', 'Radiator type', 'select', labels.radiator_type], ['radiator_size_mm', 'Typical radiator size (height × width)', 'size', 'mm'],
+    ['pipe_system', 'Pipe layout', 'select', labels.pipe_system]]],
+];
+const findField = (p, key) => Object.values(p).map(step => step.fields[key]).find(Boolean);
+function initialValue(f, type) {
+  const v = f?.value ?? null;
+  if (type === 'yesno') return v === true ? 'yes' : v === false ? 'no' : 'unknown';
+  if (type === 'select') return v === null ? 'unknown' : String(v);
+  if (type === 'size') return v ? v.map(String) : ['', ''];
+  return typeof v === 'number' ? String(v) : '';
+}
+function parseConfirmed(type, raw) { // undefined = left blank (keep the current value)
+  if (type === 'yesno') return { yes: true, no: false, unknown: null }[raw];
+  if (type === 'select') return raw === 'unknown' ? null : raw;
+  if (type === 'size') { const [h, w] = raw.map(parseNumber); return h > 0 && w > 0 ? [h, w] : undefined; }
+  const n = parseNumber(raw);
+  return n === null || !Number.isFinite(n) ? undefined : n;
+}
+function confirmControl(key, type, unitOrOptions, value) {
+  const id = `cf-${key}`;
+  if (type === 'number') return `<div class="input-wrap"><input id="${id}" name="cf:${key}" type="text" inputmode="decimal" autocomplete="off" value="${escape(value)}" placeholder="unknown">${unitOrOptions ? `<span class="input-unit">${unitOrOptions}</span>` : ''}</div>`;
+  if (type === 'size') return `<div class="cf-size"><input id="${id}" name="cf:${key}:0" type="text" inputmode="numeric" value="${escape(value[0])}" placeholder="height" aria-label="Height in mm"><span>×</span><input name="cf:${key}:1" type="text" inputmode="numeric" value="${escape(value[1])}" placeholder="width" aria-label="Width in mm"><span>mm</span></div>`;
+  const options = type === 'yesno' ? { yes: 'Yes', no: 'No', unknown: 'Not sure' } : unitOrOptions;
+  return `<select id="${id}" name="cf:${key}">${Object.entries(options).map(([v, label]) => `<option value="${v}" ${value === v ? 'selected' : ''}>${label}</option>`).join('')}</select>`;
+}
+function confirmPage() {
+  if (!ensureAssessment()) return resultPage();
+  const p = assessment.data.processed;
+  const groups = CONFIRM.map(([title, rows]) => `<section class="cf-group"><h2>${title}</h2>${rows.map(([key, label, type, extra]) => {
+    const f = findField(p, key);
+    if (!f) return '';
+    const entry = state.confirm[key], value = entry ? entry.value : initialValue(f, type);
+    const missing = f.value === null || (key === 'unheated_area' && typeof f.value === 'string');
+    const evidence = f.evidence && !['self-reported', 'not asked', 'not provided', String(f.value)].includes(f.evidence) ? `<p class="rp-evidence">“${escape(f.evidence)}”</p>` : '';
+    return `<div class="cf-row ${missing ? 'missing' : ''}"><div class="cf-label"><label for="cf-${key}">${label}</label>${evidence}${missing ? '<p class="cf-missing">Open — add it if you know it</p>' : ''}</div>`
+      + `<div class="cf-control">${confirmControl(key, type, extra, value)}</div><label class="cf-ok"><input type="checkbox" name="ok:${key}" ${entry?.ok ? 'checked' : ''}> Correct</label></div>`;
+  }).join('')}</section>`).join('');
+  return `<main id="main" class="flow-main cf"><div class="result-topline"><button class="back-button" data-go="5">← Back to my result</button><span>CONFIRM YOUR DETAILS</span></div>
+    <h1 id="page-title" tabindex="-1">Check and complete your details.</h1><p class="intro">Tick what is right, correct what isn’t, and add what you know. Anything still open is explored with sliders on the next page.</p>
+    <button type="button" class="button secondary" data-approve-all>Mark all shown values as correct</button>${groups}
+    <div class="form-actions"><button type="button" class="back-button" data-go="5">← Back</button><button type="button" class="button primary" data-finalize>Finalise my check ${chevron}</button></div></main>`;
+}
+// The engine input after the customer's confirmations: confirmed values become high confidence.
+function confirmedProcessed() {
+  const p = structuredClone(assessment.data.processed);
+  for (const [, rows] of CONFIRM) for (const [key, , type] of rows) {
+    const entry = state.confirm[key];
+    if (!entry?.ok) continue;
+    const v = parseConfirmed(type, entry.value);
+    for (const step of Object.values(p)) {
+      const f = step.fields[key];
+      if (!f) continue;
+      if (v === undefined) { if (f.value !== null) step.fields[key] = { ...f, confidence: 'high', source: 'homeowner.confirmed' }; }
+      else step.fields[key] = { value: v, source: 'homeowner.confirmed', confidence: v === null ? 'low' : 'high', evidence: 'confirmed by the homeowner', ...(key === 'radiator_type' && v === null ? { alternatives: ['11', '22', '33'] } : {}) };
+    }
+  }
+  return p;
+}
+
+// What-if page: every input still open gets a fixed-rule assumption and a slider; the slider track is coloured by
+// the verdict the engine gives at each position (others held at their current values).
+let whatIf = { processed: null };
+const VERDICT_COLOR = { green: '#8fb07f', yellow: '#e6c75f', red: '#d9826a' };
+function trackGradient(sweep) {
+  const n = sweep.length;
+  return `linear-gradient(to right, ${sweep.map((r, i) => `${VERDICT_COLOR[r.verdict]} ${Math.max(0, (i - 0.5) / (n - 1) * 100).toFixed(1)}% ${Math.min(100, (i + 0.5) / (n - 1) * 100).toFixed(1)}%`).join(', ')})`;
+}
+async function runScenarios(values) {
+  const req = whatIf.req = (whatIf.req || 0) + 1;
+  try {
+    const data = await scenarios(whatIf.processed, values);
+    if (req !== whatIf.req) return;
+    const first = whatIf.status !== 'done';
+    whatIf = { ...whatIf, status: 'done', data, values: { ...data.values } };
+    if (state.step !== 7) return;
+    if (first) { render(); document.querySelector('#page-title')?.focus(); announce('Your final check is ready.'); } else updateWhatIf();
+  } catch { if (req === whatIf.req) { whatIf.status = 'error'; if (state.step === 7) render(); } }
+}
+function whatIfResult(data) {
+  const r = data.result, full = data.full.summary, v = verdictMeta(r, true);
+  return `<div class="rp-top"><div class="rp-card rp-verdict ${v.cls}"><p class="eyebrow">${v.eyebrow}</p><h1 id="page-title" tabindex="-1">${v.title}</h1>
+      <p>All open options together: <strong>${escape(full.verdict)}</strong>${full.saving_eur ? `, saving ${euros(full.saving_eur)} a year` : ''}.</p></div>
+    <div class="rp-card"><dl class="wi-numbers"><div><dt>Heat load</dt><dd>${span(r.load_kw, ' kW')}</dd></div><div><dt>Water temperature</dt><dd>${span(r.flow_c, ' °C')}</dd></div>
+      <div><dt>Heat pump cost</dt><dd>${euros(r.heat_pump_eur)}<span> / year</span></dd></div><div><dt>Saving</dt><dd class="wi-saving">${euros(r.saving_eur)}<span> / year</span></dd></div></dl></div></div>`;
+}
+function updateWhatIf() {
+  const { data, values } = whatIf;
+  document.querySelector('#wi-result').innerHTML = whatIfResult(data);
+  for (const p of data.params) {
+    document.querySelector(`#wi-${p.key}`)?.style.setProperty('--track', trackGradient(data.sweeps[p.key]));
+    const note = document.querySelector(`#wi-log-${p.key}`);
+    if (note) note.textContent = values[p.key] === p.assumed ? 'in use' : `you chose ${p.labels[p.values.indexOf(values[p.key])]}`;
+  }
+}
+function whatIfPage() {
+  if (!ensureAssessment()) return resultPage();
+  if (!whatIf.processed) { whatIf = { processed: confirmedProcessed(), status: 'loading' }; runScenarios(null); }
+  const top = '<div class="result-topline"><button class="back-button" data-go="6">← Back to my details</button><span>WHAT IF</span></div>';
+  if (whatIf.status === 'loading') return `<main id="main" class="result-main">${top}<section class="verdict-panel" aria-busy="true"><div><h1 id="page-title" tabindex="-1">Working out every option…</h1></div></section></main>`;
+  if (whatIf.status === 'error') return `<main id="main" class="result-main">${top}<section class="verdict-panel yellow"><div><h1 id="page-title" tabindex="-1">We couldn’t finish the check.</h1><div class="result-actions"><button class="button primary" data-go="6">Back to my details</button></div></div></section></main>`;
+  const { data, values } = whatIf;
+  const sliders = data.params.map(p => {
+    const i = p.values.indexOf(values[p.key]);
+    return `<div class="wi-param"><div class="wi-head"><label for="wi-${p.key}">${escape(p.label)}</label><output id="wi-out-${p.key}" for="wi-${p.key}">${escape(p.labels[i])}</output></div>
+      <input type="range" class="wi-range" id="wi-${p.key}" name="wi:${p.key}" min="0" max="${p.values.length - 1}" step="1" value="${i}" aria-valuetext="${escape(p.labels[i])}" style="--track: ${trackGradient(data.sweeps[p.key])}">
+      <div class="wi-scale"><span>${escape(p.labels[0])}</span><span>${escape(p.labels[p.labels.length - 1])}</span></div></div>`;
+  }).join('');
+  const log = data.params.map(p => `<li><strong>${escape(p.label)}: ${escape(p.labels[p.values.indexOf(p.assumed)])}</strong> — ${escape(p.rule)} <span class="wi-log-state" id="wi-log-${p.key}">${values[p.key] === p.assumed ? 'in use' : `you chose ${escape(p.labels[p.values.indexOf(values[p.key])])}`}</span></li>`).join('');
+  return `<main id="main" class="result-main rp wi">${top}
+    <section class="rp-layer"><p class="rp-layer-label">Final result · ${escape(whatIf.processed['02_radiator_check'].building_id)} · with the values set below</p><div id="wi-result">${whatIfResult(data)}</div></section>
+    <section class="rp-layer"><p class="rp-layer-label">Still open · move a slider to see what would change</p>
+      ${data.params.length ? `<p class="wi-legend"><span class="green"></span>green: ≤ 55 °C <span class="yellow"></span>yellow: 55–60 °C <span class="red"></span>red: &gt; 60 °C, at each slider position</p><div class="wi-params">${sliders}</div><button type="button" class="button secondary" data-wi-reset>Back to the assumptions</button>` : '<p>Nothing is open any more: this is your final result.</p>'}</section>
+    ${data.params.length ? `<section class="rp-layer"><p class="rp-layer-label">Assumption log · fixed rules</p><ol class="wi-log">${log}</ol></section>` : ''}
     <div class="result-actions"><button class="reset-button" data-reset>Start a new check</button></div></main>`;
 }
+let whatIfTimer;
+
 function render() {
   document.documentElement.classList.toggle('larger-text', state.larger);
   document.querySelector('#text-size').setAttribute('aria-pressed', String(state.larger));
-  app.innerHTML = (state.step === 0 ? welcome() : state.step === 5 ? resultPage() : formPage()) + `<dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">Start a new home check?</h2><p>This clears the answers in this tab. Save your summary first if you want to keep it.</p><div class="dialog-actions"><button class="button secondary" data-cancel-reset autofocus>Keep my answers</button><button class="button primary" data-confirm-reset>Start a new check</button></div></dialog>`;
-  document.title = `${state.step === 0 ? 'Heat pump home check' : state.step === 5 ? 'Your first assessment' : steps[state.step - 1]} · nuuEnergy`;
+  app.innerHTML = (state.step === 0 ? welcome() : state.step === 5 ? resultPage() : state.step === 6 ? confirmPage() : state.step === 7 ? whatIfPage() : formPage()) + `<dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">Start a new home check?</h2><p>This clears the answers in this tab. Save your summary first if you want to keep it.</p><div class="dialog-actions"><button class="button secondary" data-cancel-reset autofocus>Keep my answers</button><button class="button primary" data-confirm-reset>Start a new check</button></div></dialog>`;
+  document.title = `${state.step === 0 ? 'Heat pump home check' : ({ 5: 'Your first assessment', 6: 'Confirm your details', 7: 'What if' })[state.step] || steps[state.step - 1]} · nuuEnergy`;
 }
 app.addEventListener('input', event => {
   const el = event.target;
   if (el.name && Object.hasOwn(state.answers, el.name)) { state.answers[el.name] = el.value; save(); }
+  if (el.name?.startsWith('wi:')) {
+    const key = el.name.slice(3), p = whatIf.data.params.find(x => x.key === key), label = p.labels[Number(el.value)];
+    whatIf.values[key] = p.values[Number(el.value)];
+    el.setAttribute('aria-valuetext', label); document.querySelector(`#wi-out-${key}`).textContent = label;
+    clearTimeout(whatIfTimer); whatIfTimer = setTimeout(() => runScenarios(whatIf.values), 120);
+  }
 });
 app.addEventListener('change', event => {
   const el = event.target;
@@ -246,6 +385,16 @@ app.addEventListener('change', event => {
     state.answers[el.name] = el.value;
     if (el.name === 'energy_carrier') { state.answers.unit = 'kwh'; state.answers.amount = ''; }
     save();
+  }
+  if (el.name?.startsWith('cf:') || el.name?.startsWith('ok:')) {
+    const [kind, key, part] = el.name.split(':'), row = CONFIRM.flatMap(([, rows]) => rows).find(r => r[0] === key);
+    const entry = state.confirm[key] ||= { value: initialValue(findField(assessment.data.processed, key), row[2]), ok: false };
+    if (kind === 'ok') entry.ok = el.checked;
+    else {
+      if (part === undefined) entry.value = el.value; else { entry.value = [...entry.value]; entry.value[Number(part)] = el.value; }
+      entry.ok = true; document.querySelector(`[name="ok:${key}"]`).checked = true;
+    }
+    whatIf = { processed: null }; save();
   }
 });
 app.addEventListener('submit', event => {
@@ -269,6 +418,22 @@ app.addEventListener('click', async event => {
   if (button.hasAttribute('data-sample')) loadSample(button.dataset.sample);
   if (button.hasAttribute('data-retry')) await loadSamples();
   if (button.hasAttribute('data-retry-assess')) { assessment = { key: null, status: 'idle', data: null }; render(); }
+  if (button.hasAttribute('data-approve-all')) {
+    for (const [, rows] of CONFIRM) for (const [key, , type] of rows) {
+      const f = findField(assessment.data.processed, key);
+      if (f && f.value !== null) (state.confirm[key] ||= { value: initialValue(f, type), ok: false }).ok = true;
+    }
+    whatIf = { processed: null }; save(); render(); announce('All shown values are marked as correct.');
+  }
+  if (button.hasAttribute('data-finalize')) { whatIf = { processed: null }; setStep(7); }
+  if (button.hasAttribute('data-wi-reset')) {
+    whatIf.values = Object.fromEntries(whatIf.data.params.map(p => [p.key, p.assumed]));
+    for (const p of whatIf.data.params) {
+      const i = p.values.indexOf(p.assumed), el = document.querySelector(`#wi-${p.key}`);
+      el.value = i; el.setAttribute('aria-valuetext', p.labels[i]); document.querySelector(`#wi-out-${p.key}`).textContent = p.labels[i];
+    }
+    runScenarios(whatIf.values);
+  }
   if (button.hasAttribute('data-reset')) document.querySelector('#reset-dialog').showModal();
   if (button.hasAttribute('data-cancel-reset')) document.querySelector('#reset-dialog').close();
   if (button.hasAttribute('data-confirm-reset')) { state.answers = empty(); state.sample = false; state.sampleAnswers = null; returnToReview = false; setStep(0); announce('Your answers have been cleared.'); }

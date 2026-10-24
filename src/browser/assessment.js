@@ -29,3 +29,8 @@ export function assess(customerInput) {
 export function demo(id) {
   return request(`/api/demo/${encodeURIComponent(id)}`);
 }
+
+// After the customer confirmed their data: assumptions, what-if result and per-input sweeps for what is still open.
+export function scenarios(processed, values) {
+  return request('/api/scenarios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ processed, values }) });
+}

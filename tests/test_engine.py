@@ -11,6 +11,7 @@ sys.path[:0] = [str(ROOT / "src" / "decision_engine"), str(ROOT / "scripts")]
 
 import engine  # noqa: E402
 import prepare  # noqa: E402
+import scenarios  # noqa: E402
 from evaluate import evaluate  # noqa: E402
 
 BASE = {"construction_year": 2005, "floor_area_m2": 180, "heat_distribution": "underfloor", "annual_consumption_kwh": 15500,
@@ -67,6 +68,33 @@ class Engine(unittest.TestCase):
     def test_unknown_radiator_type_lists_every_type(self):
         o = assess(heat_distribution="radiators", radiator_count=12)
         self.assertEqual(sorted(o["02_radiator_check"]["flow_temp_c"]["by_case"]), ["11", "22", "33"])
+
+
+class Scenarios(unittest.TestCase):
+    def setUp(self):
+        self.steps = next(r for r in evaluate() if r["building_id"] == "B-03")["processed"]
+
+    def test_every_uncertain_input_has_an_assumption_and_a_sweep(self):
+        r = scenarios.run(self.steps)
+        keys = [p["key"] for p in r["params"]]
+        self.assertIn("radiator_type", keys)
+        self.assertIn("heated_share", keys)
+        for p in r["params"]:
+            self.assertIn(p["assumed"], p["values"])
+            self.assertTrue(p["rule"])
+            self.assertEqual(len(r["sweeps"][p["key"]]), len(p["values"]))
+
+    def test_pinned_inputs_give_a_single_load_and_radiator_type_decides(self):
+        r = scenarios.run(self.steps)
+        lo, hi = r["result"]["load_kw"]
+        self.assertEqual(lo, hi)
+        self.assertEqual([x["verdict"] for x in r["sweeps"]["radiator_type"]], ["red", "yellow", "green"])  # types 11, 22, 33
+
+    def test_chosen_values_override_assumptions_and_unknown_values_are_ignored(self):
+        r = scenarios.run(self.steps, {"radiator_type": "33", "full_load_hours": 12345})
+        self.assertEqual(r["values"]["radiator_type"], "33")
+        self.assertEqual(r["values"]["full_load_hours"], 2000)
+        self.assertEqual(r["result"]["verdict"], "green")
 
 
 class DemoCustomers(unittest.TestCase):

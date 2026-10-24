@@ -8,7 +8,8 @@ src/decision_engine/      one module per engine step, each with run(...) -> dict
   decision.py             verdict, reasons, boundaries, next steps
   engine.py               runs the four steps in order: processed inputs -> outputs
   prepare.py              browser form answers (customer_input) -> processed inputs + reference data
-scripts/serve.py          browser app + engine API (/api/assess, /api/samples, /api/evaluation)
+  scenarios.py            what-if: fixed-rule assumptions for open inputs, pinned point runs, per-input sweeps
+scripts/serve.py          browser app + engine API (/api/assess, /api/scenarios, /api/demo, /api/samples, /api/evaluation)
 scripts/run_engine.py     reads data/demo/<id>/processed/, writes data/demo/<id>/output/
 scripts/evaluate.py       internal: engine on all demo customers vs. organizer labels
 scripts/plot_engine_schematic.py   docs/decision_engine_schematic.pdf

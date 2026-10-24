@@ -2,6 +2,7 @@
 
 usage: python3 scripts/serve.py        -> http://127.0.0.1:4173   (PORT=4174 python3 scripts/serve.py to change)
   POST /api/assess      customer_input -> {processed, outputs}
+  POST /api/scenarios   {processed, values} -> assumptions, what-if result and per-input sweeps
   GET  /api/samples     demo customers' raw input (no development labels)
   GET  /api/demo/<id>   {processed, outputs} for a demo customer's hand-extracted processed/ files
   GET  /api/evaluation  internal competition evaluation, shown at /evaluation.html
@@ -20,6 +21,7 @@ sys.path.insert(0, str(ROOT / "src" / "decision_engine"))
 
 import engine  # noqa: E402
 import prepare  # noqa: E402
+import scenarios  # noqa: E402
 from evaluate import evaluate  # noqa: E402
 from run_engine import DEMO, load_steps  # noqa: E402
 
@@ -72,17 +74,20 @@ class Handler(BaseHTTPRequestHandler):
         self.send(200, (ROOT / path[1:]).read_bytes(), TYPES[Path(path).suffix])
 
     def do_POST(self):
-        if urlparse(self.path).path != "/api/assess":
+        path = urlparse(self.path).path
+        if path not in ("/api/assess", "/api/scenarios"):
             return self.send(404, b"Not found")
         length = int(self.headers.get("Content-Length") or 0)
         if length > MAX_BODY:
             return self.send(413, b"Request too large")
         try:
-            customer_input = json.loads(self.rfile.read(length))
-            assert isinstance(customer_input, dict)
+            body = json.loads(self.rfile.read(length))
+            assert isinstance(body, dict)
         except (ValueError, AssertionError):
             return self.send(400, b"Expected a JSON object")
-        self.api(assess, customer_input)
+        if path == "/api/scenarios":
+            return self.api(scenarios.run, body["processed"], body.get("values"))
+        self.api(assess, body)
 
 
 if __name__ == "__main__":
