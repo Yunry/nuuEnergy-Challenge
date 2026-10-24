@@ -42,7 +42,19 @@ from evaluate import evaluate  # noqa: E402
 import ai_extract  # noqa: E402
 import evidence_store  # noqa: E402
 import evidence_workflow  # noqa: E402
-from run_engine import DEMO, load_steps  # noqa: E402
+from run_engine import DEMO as FIXTURE_DEMO, load_steps  # noqa: E402
+
+# A serverless bundle is read-only. Keep supplied examples in the bundle and customer writes in /tmp.
+DEMO = Path(os.environ.get('NUUENERGY_DATA_DIR', str(FIXTURE_DEMO)))
+if DEMO != FIXTURE_DEMO:
+    for source in FIXTURE_DEMO.glob('B-[0-9]*'):
+        for relative in ('raw/customer_input.json', 'processed'):
+            original, target = source / relative, DEMO / source.name / relative
+            if original.is_dir():
+                shutil.copytree(original, target, dirs_exist_ok=True)
+            elif original.is_file() and not target.exists():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(original, target)
 
 ai_extract.load_env(ROOT / '.env')
 
@@ -283,7 +295,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send(200, json.dumps(fn(*args), ensure_ascii=False).encode(), "application/json; charset=utf-8")
         except Exception:
             traceback.print_exc()
-            self.send(500, b"Engine error")
+            self.send(500, json.dumps({"error": "Engine error"}).encode(), "application/json; charset=utf-8")
 
     def do_GET(self):
         path = urlparse(self.path).path
@@ -300,7 +312,7 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/api/live/demo-file/"):
             file = demo_file(unquote(path.rsplit("/", 1)[1]))
             if file is None:
-                return self.send(404, b"Not found")
+                return self.send(404, json.dumps({"error": "Not found"}).encode(), "application/json; charset=utf-8")
             return self.send(200, file.read_bytes(), FILE_TYPES[file.suffix.lower()])
         match = re.fullmatch(rf"/api/customer/({FOLDER_ID})/files", path)
         if match:
@@ -311,7 +323,7 @@ class Handler(BaseHTTPRequestHandler):
             file = raw / match[2]
             if file.is_file() and file.suffix.lower() in RAW_TYPES and file.resolve().parent in (raw.resolve(), (raw / "documents").resolve(), (raw / "photos").resolve()):
                 return self.send(200, file.read_bytes(), RAW_TYPES[file.suffix.lower()])
-            return self.send(404, b"Not found")
+            return self.send(404, json.dumps({"error": "Not found"}).encode(), "application/json; charset=utf-8")
         match = re.fullmatch(r"/api/demo/(B-\d+|D-B\d+|B-Live)", path)
         if match and (any((customer_folder(match[1]) / "processed").glob("*.json")) or customer_steps.step_dirs(customer_folder(match[1]))):
             return self.api(demo, match[1])
@@ -323,24 +335,28 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = urlparse(self.path).path
         if path not in ("/api/assess", "/api/scenarios", "/api/extract", "/api/upload", "/api/live/start", "/api/live/upload", "/api/live/reset", "/api/live/use-demo"):
-            return self.send(404, b"Not found")
+            return self.send(404, json.dumps({"error": "Not found"}).encode(), "application/json; charset=utf-8")
         # This local API accepts same-origin JSON only, including for paid AI requests.
         origin = self.headers.get('Origin')
-        if origin and origin.split('://', 1)[-1] != self.headers.get('Host', ''):  # same host, http or https (tunnels)
-            return self.send(403, b"Cross-origin requests are not allowed")
+        host = self.headers.get('X-Forwarded-Host') or self.headers.get('Host', '')
+        if origin:
+            origin_host = origin.split('://', 1)[-1].rstrip('/')
+            is_local = origin_host.split(':')[0] in ('localhost', '127.0.0.1') and host.split(':')[0] in ('localhost', '127.0.0.1')
+            if origin_host != host and not is_local:
+                return self.send(403, json.dumps({"error": "Cross-origin requests are not allowed"}).encode(), "application/json; charset=utf-8")
         if self.headers.get_content_type() != 'application/json':
-            return self.send(415, b"Expected application/json")
+            return self.send(415, json.dumps({"error": "Expected application/json"}).encode(), "application/json; charset=utf-8")
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
-            return self.send(400, b"Invalid content length")
+            return self.send(400, json.dumps({"error": "Invalid content length"}).encode(), "application/json; charset=utf-8")
         if length < 1 or length > (15 * 1024 * 1024 if path in ('/api/extract', '/api/upload', '/api/live/upload') else MAX_BODY):
-            return self.send(413, b"Request too large")
+            return self.send(413, json.dumps({"error": "Request too large"}).encode(), "application/json; charset=utf-8")
         try:
             body = json.loads(self.rfile.read(length))
             assert isinstance(body, dict)
         except (ValueError, AssertionError):
-            return self.send(400, b"Expected a JSON object")
+            return self.send(400, json.dumps({"error": "Expected a JSON object"}).encode(), "application/json; charset=utf-8")
         if path == "/api/scenarios":
             return self.api(scenarios.run, body["processed"], body.get("values"))
         if path == "/api/live/start":

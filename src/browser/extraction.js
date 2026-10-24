@@ -40,7 +40,9 @@ export async function extractFiles(files, context = {}) {
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 100000);
   try {
     const response = await fetch('/api/extract', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...context, files: payload }), signal: controller.signal });
-    const result = await response.json();
+    const text = await response.text();
+    let result;
+    try { result = JSON.parse(text); } catch { throw new Error(`Server returned HTTP ${response.status}. Please try again or enter answers manually.`); }
     if (!response.ok) throw new Error(result.error || 'AI extraction could not be completed. Enter answers manually or try again.');
     return result;
   } catch (error) {
@@ -79,7 +81,9 @@ export async function uploadFiles(customerId, files) {
   validateFiles(files);
   const payload = await Promise.all(files.map(filePayload));
   const response = await fetch('/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer_id: customerId, files: payload }) });
-  const result = await response.json();
+  const text = await response.text();
+  let result;
+  try { result = JSON.parse(text); } catch { throw new Error(`Server returned HTTP ${response.status}. The files could not be saved.`); }
   if (!response.ok) throw new Error(result.error || 'The files could not be saved.');
   return result;
 }

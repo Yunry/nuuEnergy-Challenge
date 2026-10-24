@@ -1194,7 +1194,8 @@ async function loadSamples() {
   try {
     const response = await fetch('/api/samples');
     if (!response.ok) throw new Error('Unavailable');
-    samples = await response.json(); sampleError = '';
+    const text = await response.text();
+    samples = JSON.parse(text); sampleError = '';
   } catch { sampleError = 'Example homes could not be loaded. You can still check your own home.'; }
   if (state.step === 0) render();
 }

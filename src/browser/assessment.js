@@ -17,8 +17,11 @@ async function request(url, options = {}, timeoutMs = 15000) {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(url, { ...options, signal: controller.signal });
-    if (!response.ok) throw new Error(`Engine responded ${response.status}`);
-    return await response.json();
+    const text = await response.text();
+    let result;
+    try { result = JSON.parse(text); } catch { throw new Error(`Engine returned HTTP ${response.status}`); }
+    if (!response.ok) throw new Error(result?.error || `Engine responded ${response.status}`);
+    return result;
   } finally { clearTimeout(timer); }
 }
 

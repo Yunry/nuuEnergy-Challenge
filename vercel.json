@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "python3 scripts/build_vercel.py",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 120,
+      "includeFiles": "{scripts/**,src/decision_engine/**,data/demo/B-0*/**,data/customers/D-B*/**,data/customer/demo/**,data/raw/buildings/**}",
+      "excludeFiles": "{**/__pycache__/**,data/demo/*/raw/documents/**,data/demo/*/raw/photos/**,.env*,tests/**}"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index.py?_route=/api/:path*" }
+  ]
+}

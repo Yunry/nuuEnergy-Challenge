@@ -1,0 +1,8 @@
+.git
+.env*
+**/__pycache__
+data/demo/C-*
+data/demo/B-Live
+data/demo/*/raw/documents
+data/demo/*/raw/photos
+node_modules
