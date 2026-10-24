@@ -104,6 +104,15 @@ def run(system, heat_load, radiator_check, operating_cost):
         homeowner.insert(0, "Side photo of one typical radiator, plus its height and width")
     if radiators and f["flow_temperature_c"] is None:
         homeowner.append("Current flow temperature setting of the boiler, if known")
+    # missing basics that block a step
+    if f["heat_distribution"] is None:
+        homeowner.append("Whether the heat reaches the rooms through radiators, underfloor heating or both")
+    if radiators and not f["radiator_count"]:
+        homeowner.append("Number of radiators in the rooms you heat")
+    if load["by_area"] is None:
+        homeowner.append("Heated floor area of the home")
+    if load["by_consumption"] is None:
+        homeowner.append("Energy used in one full year, from a recent heating bill")
     if radiators:
         technician.append("Room-by-room radiator sizing")
     technician += ["Electrical capacity and meter cabinet", "Outdoor unit placement, sound and permits"]

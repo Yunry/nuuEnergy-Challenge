@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Internal evaluation · nuuEnergy</title>
+  <link rel="stylesheet" href="/src/browser/styles.css">
+  <script type="module" src="/src/browser/evaluation.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/"><span>nuu</span>Energy<span class="brand-dot" aria-hidden="true">.</span></a>
+    <span class="header-description">Internal evaluation</span>
+  </header>
+  <main id="main" class="eval-main">
+    <p class="eval-banner"><strong>Internal use only.</strong> Competition evaluation, not part of the product: the decision engine runs on the processed inputs in <code>data/demo/&lt;customer&gt;/processed</code> and is compared with the organizers' labels (<code>data/raw/buildings/buildings_dev.json</code>). Homeowners never see this page or the labels.</p>
+    <h1>Engine vs. labels</h1>
+    <div id="eval"><p>Running the engine…</p></div>
+  </main>
+  <footer class="site-footer"><span>nuuEnergy · Hackathon prototype</span><span>Internal evaluation page</span></footer>
+</body>
+</html>

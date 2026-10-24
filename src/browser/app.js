@@ -1,8 +1,8 @@
-import { assessBuilding, toEngineInput } from './assessment.js';
+import { assess, toCustomerInput } from './assessment.js';
 
 const app = document.querySelector('#app');
 const storageKey = 'nuu-home-check-v1';
-const empty = () => ({ construction_year: '', floor_area_m2: '', renovation_status: 'unknown', energy_carrier: 'unknown', heat_distribution: 'unknown', amount: '', unit: 'kwh', consumption_full_year: 'unknown', persons_in_household: '', hot_water_via_heating: 'unknown', flow_temperature_c: '', pipe_system: 'unknown', other_heat_source: 'unknown', solar_thermal: 'unknown', building_notes: '', building_id: 'HOME' });
+const empty = () => ({ construction_year: '', floor_area_m2: '', renovation_status: 'unknown', energy_carrier: 'unknown', heat_distribution: 'unknown', amount: '', unit: 'kwh', consumption_full_year: 'unknown', persons_in_household: '', hot_water_via_heating: 'unknown', flow_temperature_c: '', pipe_system: 'unknown', radiator_count: '', radiator_type: 'unknown', other_heat_source: 'unknown', solar_thermal: 'unknown', building_notes: '', building_id: 'HOME' });
 let state = { step: 0, answers: empty(), larger: false, sample: false };
 try {
   const saved = JSON.parse(sessionStorage.getItem(storageKey));
@@ -19,6 +19,7 @@ const labels = {
   energy_carrier: { unknown: 'Not sure', gas: 'Natural gas', oil: 'Heating oil', lpg: 'LPG / bottled or tank gas', electric: 'Electric heating', district: 'District heating' },
   heat_distribution: { unknown: 'Not sure', radiators: 'Radiators', underfloor: 'Underfloor heating', mixed: 'Both' },
   pipe_system: { unknown: 'Not sure', 'two-pipe': 'Two-pipe system', 'single-pipe': 'Single-pipe system' },
+  radiator_type: { unknown: 'Not sure', 33: 'Three panels (type 33)', 22: 'Two panels (type 22)', 11: 'One panel (type 11)' },
 };
 function save() { try { sessionStorage.setItem(storageKey, JSON.stringify(state)); } catch {} }
 function announce(text) { document.querySelector('#announcement').textContent = text; }
@@ -40,7 +41,7 @@ function parseNumber(raw) {
 }
 function values() {
   const a = state.answers, out = { ...a };
-  for (const key of ['construction_year', 'floor_area_m2', 'persons_in_household', 'flow_temperature_c']) out[key] = parseNumber(a[key]);
+  for (const key of ['construction_year', 'floor_area_m2', 'persons_in_household', 'flow_temperature_c', 'radiator_count']) out[key] = parseNumber(a[key]);
   for (const key of ['consumption_full_year', 'hot_water_via_heating', 'other_heat_source', 'solar_thermal']) out[key] = a[key] === 'yes' ? true : a[key] === 'no' ? false : null;
   out.annual_consumption_kwh = parseNumber(a.amount);
   if (out.annual_consumption_kwh !== null && ['litres', 'm3'].includes(a.unit)) out.annual_consumption_kwh *= 10;
@@ -48,7 +49,7 @@ function values() {
   return out;
 }
 function validate(step) {
-  const specs = step === 1 ? [['floor_area_m2', 1, 5000, false, 'Enter an area between 1 and 5,000 m², or leave it blank.'], ['construction_year', 1800, new Date().getFullYear(), true, 'Enter a four-digit year from 1800 to this year, or leave it blank.']] : step === 3 ? [['amount', 1, 10000000, false, 'Enter an amount greater than zero, such as 18000, or leave it blank.'], ['persons_in_household', 1, 30, true, 'Enter a whole number from 1 to 30, or leave it blank.'], ['flow_temperature_c', 20, 100, false, 'Enter a temperature from 20 to 100 °C, or leave it blank.']] : [];
+  const specs = step === 2 ? [['radiator_count', 1, 100, true, 'Enter a whole number from 1 to 100, or leave it blank.']] : step === 1 ? [['floor_area_m2', 1, 5000, false, 'Enter an area between 1 and 5,000 m², or leave it blank.'], ['construction_year', 1800, new Date().getFullYear(), true, 'Enter a four-digit year from 1800 to this year, or leave it blank.']] : step === 3 ? [['amount', 1, 10000000, false, 'Enter an amount greater than zero, such as 18000, or leave it blank.'], ['persons_in_household', 1, 30, true, 'Enter a whole number from 1 to 30, or leave it blank.'], ['flow_temperature_c', 20, 100, false, 'Enter a temperature from 20 to 100 °C, or leave it blank.']] : [];
   const found = {};
   for (const [key, min, max, integer, message] of specs) {
     const n = parseNumber(state.answers[key]);
@@ -79,7 +80,7 @@ function homeForm() {
   return `${field('floor_area_m2', 'How much space do you heat?', 'Use the floor area of the rooms you heat. A rough figure is fine.', { unit: 'm²', placeholder: 'For example, 150', mode: 'decimal' })}${field('construction_year', 'When was your home built?', 'You may find the year in your property documents.', { placeholder: 'For example, 1985' })}${choices('renovation_status', 'Has the insulation been improved?', [['unrenovated', 'No major improvements'], ['partially', 'Some improvements', 'For example, new windows or roof insulation'], ['fully', 'Comprehensive renovation', 'Major insulation improvements across the home'], ['unknown', 'I’m not sure']], 'Choose the answer that fits best.')}`;
 }
 function heatingForm() {
-  return `${select('energy_carrier', 'What do you use to heat your home?', Object.entries(labels.energy_carrier), 'You can usually find this on your heating bill.')}${choices('heat_distribution', 'How does the heat reach your rooms?', [['radiators', 'Radiators', 'Heaters attached to the walls'], ['underfloor', 'Underfloor heating', 'Warm water runs through pipes beneath the floor'], ['mixed', 'Both', 'Some rooms have radiators, others have floor heating'], ['unknown', 'I’m not sure']])}<div class="help-note"><span aria-hidden="true">i</span><p><strong>Radiators can work with heat pumps, too.</strong><br>Their size and the water temperature they need matter more than simply having them.</p></div>`;
+  return `${select('energy_carrier', 'What do you use to heat your home?', Object.entries(labels.energy_carrier), 'You can usually find this on your heating bill.')}${choices('heat_distribution', 'How does the heat reach your rooms?', [['radiators', 'Radiators', 'Heaters attached to the walls'], ['underfloor', 'Underfloor heating', 'Warm water runs through pipes beneath the floor'], ['mixed', 'Both', 'Some rooms have radiators, others have floor heating'], ['unknown', 'I’m not sure']])}<div class="help-note"><span aria-hidden="true">i</span><p><strong>Radiators can work with heat pumps, too.</strong><br>Their size and the water temperature they need matter more than simply having them.</p></div>${field('radiator_count', 'How many radiators do you have?', 'Count the radiators in the rooms you heat. Skip this if you only have underfloor heating.', { placeholder: 'For example, 12' })}${choices('radiator_type', 'What do most of your radiators look like?', [['33', 'Three panels', 'Thick, with three flat panels one behind the other'], ['22', 'Two panels', 'Two flat panels with fins between them'], ['11', 'One panel', 'A single thin flat panel'], ['unknown', 'I’m not sure']], 'Look at a radiator from the side. Bigger radiators work better with a heat pump.')}`;
 }
 function energyForm() {
   const units = [['kwh', 'kWh (kilowatt-hours)'], ...(state.answers.energy_carrier === 'oil' ? [['litres', 'Litres of heating oil']] : state.answers.energy_carrier === 'gas' ? [['m3', 'm³ of natural gas']] : [])];
@@ -96,7 +97,7 @@ function reviewGroup(title, step, rows) {
 }
 function review() {
   const a = state.answers;
-  return `${state.sample ? `<div class="sample-notice">Example home ${escape(a.building_id)}. These are anonymised project details. You can change any answer.</div>` : ''}${reviewGroup('Your home', 1, [['Heated area', answer('floor_area_m2', ' m²')], ['Year built', answer('construction_year')], ['Insulation improvements', answer('renovation_status')]])}${reviewGroup('Your heating', 2, [['Energy source', answer('energy_carrier')], ['Room heating', answer('heat_distribution')]])}${reviewGroup('Your energy use', 3, [['Energy used', answer('amount', ' ' + ({ kwh: 'kWh', litres: 'litres', m3: 'm³' }[a.unit]))], ['Covers a full year', answer('consumption_full_year')], ['People at home', answer('persons_in_household')], ['Hot water from heating', answer('hot_water_via_heating')], ['Water temperature', answer('flow_temperature_c', ' °C')], ['Pipe layout', answer('pipe_system')], ['Another heat source', answer('other_heat_source')], ['Solar hot water', answer('solar_thermal')], ...(a.building_notes ? [['Your notes', escape(a.building_notes)]] : [])])}<p class="review-reassurance">An unanswered question is okay. We’ll explain where more information would help.</p>`;
+  return `${state.sample ? `<div class="sample-notice">Example home ${escape(a.building_id)}. These are anonymised project details. You can change any answer.</div>` : ''}${reviewGroup('Your home', 1, [['Heated area', answer('floor_area_m2', ' m²')], ['Year built', answer('construction_year')], ['Insulation improvements', answer('renovation_status')]])}${reviewGroup('Your heating', 2, [['Energy source', answer('energy_carrier')], ['Room heating', answer('heat_distribution')], ['Radiators', answer('radiator_count')], ['Radiator type', answer('radiator_type')]])}${reviewGroup('Your energy use', 3, [['Energy used', answer('amount', ' ' + ({ kwh: 'kWh', litres: 'litres', m3: 'm³' }[a.unit]))], ['Covers a full year', answer('consumption_full_year')], ['People at home', answer('persons_in_household')], ['Hot water from heating', answer('hot_water_via_heating')], ['Water temperature', answer('flow_temperature_c', ' °C')], ['Pipe layout', answer('pipe_system')], ['Another heat source', answer('other_heat_source')], ['Solar hot water', answer('solar_thermal')], ...(a.building_notes ? [['Your notes', escape(a.building_notes)]] : [])])}<p class="review-reassurance">An unanswered question is okay. We’ll explain where more information would help.</p>`;
 }
 function formPage() {
   const titles = ['Tell us a little about your home.', 'How do you keep your home warm?', 'A little about your energy use.', 'Does everything look right?'];
@@ -104,13 +105,48 @@ function formPage() {
   const content = [homeForm, heatingForm, energyForm, review][state.step - 1]();
   return `<main id="main" class="flow-main">${progress()}<div class="flow-layout"><section class="form-panel"><p class="eyebrow">Step ${state.step} of 4</p><h1 id="page-title" tabindex="-1">${titles[state.step - 1]}</h1><p class="intro">${intros[state.step - 1]}</p>${errorSummary()}<form id="home-form" novalidate>${content}<div class="form-actions"><button type="button" class="back-button" data-go="${returnToReview ? 4 : state.step - 1}"><span aria-hidden="true">←</span> ${returnToReview ? 'Cancel changes' : 'Back'}</button><button type="submit" class="button primary">${state.step === 4 ? 'See my assessment' : returnToReview ? 'Save changes' : 'Continue'} ${chevron}</button></div></form></section><aside class="flow-aside"><div class="encouragement"><span class="aside-kicker">A little reassurance</span><h2>You don’t need to be an expert.</h2><p>“I’m not sure” is a useful answer, too. We’ll tell you which details a heating professional can help with.</p><hr><p class="small">Your answers stay in this tab. You can go back without losing them.</p></div><p class="prototype-note">This is an initial indication, not a final design or an installation quote.</p></aside></div></main>`;
 }
+let assessment = { key: null, status: 'idle', data: null };
+async function runAssessment(key, input) {
+  assessment = { key, status: 'loading', data: null };
+  try {
+    const data = await assess(input);
+    if (assessment.key === key) assessment = { key, status: 'done', data };
+  } catch { if (assessment.key === key) assessment = { key, status: 'error', data: null }; }
+  if (state.step === 5 && assessment.key === key) {
+    render(); document.querySelector('#page-title')?.focus();
+    announce(assessment.status === 'done' ? 'Your first assessment is ready.' : 'The assessment could not be completed.');
+  }
+}
+function verdictMeta(d, hasCases) {
+  if (d.verdict === 'green') return { cls: 'green', symbol: tick, eyebrow: 'Green · Likely suitable', title: 'A promising starting point.' };
+  if (d.verdict === 'red') return { cls: 'red', symbol: '!', eyebrow: 'Red · Changes needed first', title: 'Some changes are needed first.' };
+  if (d.verdict_kind === 'workable') return { cls: 'yellow', symbol: '~', eyebrow: 'Yellow · Works at a higher water temperature', title: 'Possible, with higher running costs.' };
+  return { cls: 'yellow', symbol: '?', eyebrow: 'Yellow · More checks needed', title: hasCases ? 'Possible, with a few checks.' : 'Let’s fill in a few gaps.' };
+}
+const markers = { positive: '✓', obstacle: '!', unknown: '?', action: '→', hint: 'i' };
+const caseNames = { 33: 'Three-panel radiators (type 33)', 22: 'Two-panel radiators (type 22)', 11: 'One-panel radiators (type 11)', underfloor: 'Underfloor heating' };
 function resultPage() {
-  const result = assessBuilding(toEngineInput(values()));
-  const green = result.verdict === 'green';
-  const needsInfo = !result.heating_load_kw.by_area && !result.heating_load_kw.by_consumption;
-  const title = green ? 'A promising starting point.' : needsInfo ? 'Let’s fill in a few gaps.' : 'Possible, with a few checks.';
-  const reasons = result.reasons;
-  return `<main id="main" class="result-main"><div class="result-topline"><button class="back-button" data-go="4">← Review my answers</button><span>YOUR FIRST ASSESSMENT</span></div><section class="verdict-panel ${green ? 'green' : 'yellow'}"><div class="verdict-symbol" aria-hidden="true">${green ? tick : '?'}</div><div><p class="eyebrow">${green ? 'Green · Likely suitable' : 'Yellow · More checks needed'}</p><h1 id="page-title" tabindex="-1">${title}</h1><p class="lead">${escape(result.summary)}</p></div></section><p class="result-context">This prototype gives a rough first indication. Your heating professional will confirm whether it works for your home.</p><div class="result-layout"><div><section class="result-section"><h2>What this means for your home</h2>${reasons.length ? `<ul class="reason-list">${reasons.map(reason => `<li><span class="reason-marker ${reason.type === 'positive' ? 'positive' : ''}" aria-hidden="true">${reason.type === 'positive' ? '✓' : 'i'}</span><p>${escape(reason.text)}</p></li>`).join('')}</ul>` : '<p>We don’t yet have enough information about your home or heating. Add the details you know, and we’ll help you see what remains to be checked.</p>'}</section>${result.missing_information.length || result.homeowner_can_provide.length ? `<section class="next-question"><span class="eyebrow">Your next useful step</span><h2>A little more information can help.</h2><ul>${[...result.homeowner_can_provide, ...result.missing_information].slice(0, 3).map(x => `<li>${escape(x)}</li>`).join('')}</ul><button class="button secondary" data-go="4">Add or change an answer ${chevron}</button></section>` : ''}<section class="result-section"><h2>Keep the next conversation simple.</h2><p>A heating professional will need to:</p><ol class="checklist">${result.technician_checks.map(x => `<li>${escape(x)}</li>`).join('')}</ol></section></div><aside class="estimates"><h2>Your estimates, explained</h2><p>Two ways to estimate the heating power your home needs.</p><div class="estimate"><span>From your home’s size and age</span><strong>${range(result.heating_load_kw.by_area)}</strong></div><div class="estimate"><span>From your energy use</span><strong>${range(result.heating_load_kw.by_consumption)}</strong></div><p class="small">kW describes heating power. These rough estimates are not the size of heat pump you should buy.</p>${result.heating_load_kw.consistent === false ? '<p class="estimate-warning"><strong>These estimates disagree.</strong> A professional should review why before sizing a heat pump.</p>' : ''}<details class="cost-details"><summary>What about running costs?</summary><p>Illustrative annual energy costs using fixed challenge prices.</p><dl class="cost-list"><div><dt>Current heating</dt><dd>${result.cost_eur_per_year.today === null ? 'More information needed' : money(result.cost_eur_per_year.today)}</dd></div><div><dt>Heat pump scenarios</dt><dd>${result.cost_eur_per_year.heat_pump ? result.cost_eur_per_year.heat_pump.map(money).filter((v, i, a) => a.indexOf(v) === i).join('–') : 'More information needed'}</dd></div></dl><p class="small">${escape(result.cost_eur_per_year.note)}</p>${state.answers.other_heat_source === 'yes' || state.answers.solar_thermal === 'yes' ? '<p class="estimate-warning">Extra heat sources or solar hot water affect this comparison. These figures do not cover the whole home’s future heating demand.</p>' : ''}</details></aside></div><details class="assumptions"><summary>See the assumptions and open questions</summary><div><h2>Assumptions behind this first check</h2><ul>${result.assumptions.map(x => `<li>${escape(x)}</li>`).join('')}<li>Readiness uses a provisional rule-based preview. Radiator capacity is not calculated, and no final equipment sizing is provided.</li></ul>${result.missing_information.length ? `<h2>Information still missing</h2><ul>${result.missing_information.map(x => `<li>${escape(x)}</li>`).join('')}</ul>` : ''}</div></details><div class="result-actions"><button class="button primary" data-download>Save my summary <span aria-hidden="true">↓</span></button><button class="button secondary" data-print>Print this assessment</button><button class="reset-button" data-reset>Start a new check</button></div><p class="quiet">Your summary includes the details and questions to discuss with a heating professional.</p></main>`;
+  const input = toCustomerInput(values()), key = JSON.stringify(input);
+  if (assessment.key !== key) runAssessment(key, input);
+  const top = '<div class="result-topline"><button class="back-button" data-go="4">← Review my answers</button><span>YOUR FIRST ASSESSMENT</span></div>';
+  if (assessment.status === 'loading') return `<main id="main" class="result-main">${top}<section class="verdict-panel" aria-busy="true"><div><h1 id="page-title" tabindex="-1">Checking your answers…</h1><p class="lead">This usually takes a moment.</p></div></section></main>`;
+  if (assessment.status === 'error') return `<main id="main" class="result-main">${top}<section class="verdict-panel yellow"><div><h1 id="page-title" tabindex="-1">We couldn’t complete the check.</h1><p class="lead">The calculation did not respond. Your answers are still saved in this tab.</p><div class="result-actions"><button class="button primary" data-retry-assess>Try again</button></div></div></section></main>`;
+  const { decision: d, '01_heat_load': h, '02_radiator_check': r, '03_operating_cost': c } = assessment.data.outputs;
+  const load = h.heating_load_kw, cases = r.flow_temp_c.by_case, cost = c.cost_eur_per_year, v = verdictMeta(d, Boolean(cases));
+  const temps = ([lo, hi]) => (lo === hi ? `${lo} °C` : `${lo}–${hi} °C`);
+  const boundaries = d.boundaries.map(b => `<div class="boundary"><h3>What would settle it</h3><p>The combined rated output of your radiators decides the result:</p><ul>${b.thresholds.map(t => `<li><strong>${escape(t.range)} kW</strong> in total (${escape(t.per_radiator)} kW per radiator): ${escape(t.result)}</li>`).join('')}</ul><p class="small">${escape(b.how)}.</p></div>`).join('');
+  return `<main id="main" class="result-main">${top}<section class="verdict-panel ${v.cls}"><div class="verdict-symbol" aria-hidden="true">${v.symbol}</div><div><p class="eyebrow">${v.eyebrow}</p><h1 id="page-title" tabindex="-1">${v.title}</h1><p class="lead">${escape(d.summary)}</p></div></section>`
+    + '<p class="result-context">This prototype gives a rough first indication. Your heating professional will confirm whether it works for your home.</p><div class="result-layout"><div>'
+    + `<section class="result-section"><h2>What this means for your home</h2>${d.reasons.length ? `<ul class="reason-list">${d.reasons.map(x => `<li><span class="reason-marker ${escape(x.type)}" aria-hidden="true">${markers[x.type] || 'i'}</span><p>${escape(x.text)}</p></li>`).join('')}</ul>` : '<p>We don’t yet have enough information about your home or heating. Add the details you know, and we’ll help you see what remains to be checked.</p>'}</section>`
+    + (d.homeowner_can_provide.length || boundaries ? `<section class="next-question"><span class="eyebrow">Your next useful step</span><h2>A little more information can help.</h2>${d.homeowner_can_provide.length ? `<ul>${d.homeowner_can_provide.map(x => `<li>${escape(x)}</li>`).join('')}</ul>` : ''}${boundaries}<button class="button secondary" data-go="4">Add or change an answer ${chevron}</button></section>` : '')
+    + `<section class="result-section"><h2>Keep the next conversation simple.</h2><p>A heating professional will need to:</p><ol class="checklist">${d.technician_checks.map(x => `<li>${escape(x)}</li>`).join('')}</ol></section></div>`
+    + `<aside class="estimates"><h2>Your estimates, explained</h2><p>Two ways to estimate the heating power your home needs.</p><div class="estimate"><span>From your home’s size and age</span><strong>${range(load.by_area)}</strong></div><div class="estimate"><span>From your energy use</span><strong>${range(load.by_consumption)}</strong></div>`
+    + (load.consistent === false ? '<p class="estimate-warning"><strong>These estimates disagree.</strong> Both are kept in the check; a professional should review why before sizing a heat pump.</p>' : '')
+    + `<div class="estimate"><span>Used for this check</span><strong>${range(load.used)}</strong></div><p class="small">kW describes heating power. These rough estimates are not the size of heat pump you should buy.</p>`
+    + (cases ? `<div class="estimate"><span>Water temperature your heating would need</span><dl class="flow-list">${Object.entries(cases).map(([t, x]) => `<div><dt>${escape(caseNames[t] || t)}</dt><dd>${temps(x)}</dd></div>`).join('')}</dl><p class="small">Up to 55 °C works efficiently. 55–60 °C works with higher running costs. Above 60 °C some radiators should be upgraded.</p></div>` : '')
+    + `<details class="cost-details"><summary>What about running costs?</summary><p>Illustrative annual energy costs using fixed challenge prices.</p><dl class="cost-list"><div><dt>Current heating</dt><dd>${cost.today === null ? 'More information needed' : money(cost.today)}</dd></div><div><dt>Heat pump scenarios</dt><dd>${cost.heat_pump ? cost.heat_pump.map(money).filter((x, i, a) => a.indexOf(x) === i).join('–') : 'More information needed'}</dd></div>${cost.saving ? `<div><dt>Possible saving per year</dt><dd>${cost.saving.map(money).filter((x, i, a) => a.indexOf(x) === i).join('–')}</dd></div>` : ''}</dl>${cost.note ? `<p class="small">Note: ${escape(cost.note)}.</p>` : ''}</details></aside></div>`
+    + `<details class="assumptions"><summary>See the assumptions behind this check</summary><div><h2>Assumptions behind this first check</h2><ul>${d.assumptions.map(x => `<li>${escape(x)}</li>`).join('')}<li>Radiator ratings are placeholder values until checked against manufacturer data. No final equipment sizing is provided.</li></ul></div></details>`
+    + '<div class="result-actions"><button class="button primary" data-download>Save my summary <span aria-hidden="true">↓</span></button><button class="button secondary" data-print>Print this assessment</button><button class="reset-button" data-reset>Start a new check</button></div><p class="quiet">Your summary includes the details and questions to discuss with a heating professional.</p></main>';
 }
 function render() {
   document.documentElement.classList.toggle('larger-text', state.larger);
@@ -139,7 +175,7 @@ app.addEventListener('submit', event => {
   }
   const next = returnToReview ? 4 : state.step + 1;
   returnToReview = false; editSnapshot = null; setStep(next);
-  announce(next === 5 ? 'Your first assessment is ready.' : `Step ${next} of 4: ${steps[next - 1]}.`);
+  announce(next === 5 ? 'Preparing your first assessment.' : `Step ${next} of 4: ${steps[next - 1]}.`);
 });
 app.addEventListener('click', async event => {
   const button = event.target.closest('button'); if (!button) return;
@@ -150,6 +186,7 @@ app.addEventListener('click', async event => {
   if (button.hasAttribute('data-edit')) { editSnapshot = { ...state.answers }; returnToReview = true; setStep(Number(button.dataset.edit)); }
   if (button.hasAttribute('data-sample')) loadSample(button.dataset.sample);
   if (button.hasAttribute('data-retry')) await loadSamples();
+  if (button.hasAttribute('data-retry-assess')) { assessment = { key: null, status: 'idle', data: null }; render(); }
   if (button.hasAttribute('data-reset')) document.querySelector('#reset-dialog').showModal();
   if (button.hasAttribute('data-cancel-reset')) document.querySelector('#reset-dialog').close();
   if (button.hasAttribute('data-confirm-reset')) { state.answers = empty(); state.sample = false; returnToReview = false; setStep(0); announce('Your answers have been cleared.'); }
@@ -166,11 +203,13 @@ window.addEventListener('beforeprint', () => { printDetails = [...document.query
 window.addEventListener('afterprint', () => { printDetails.forEach(d => { d.open = false; }); printDetails = []; });
 function loadSample(id) {
   const sample = samples.find(b => b.building_id === id); if (!sample) return;
-  // Copy only explicit input fields. Never pass development reference answers.
+  // Samples are the demo customers' raw input (data/demo/<id>/raw), which carries no development labels.
   const a = empty();
   for (const key of Object.keys(a)) if (sample[key] !== undefined && sample[key] !== null) a[key] = String(sample[key]);
+  if (/LPG/i.test(sample.energy_carrier_detail || '')) a.energy_carrier = 'lpg';
   a.amount = String(sample.annual_consumption_kwh); a.unit = 'kwh'; a.consumption_full_year = 'yes';
   a.hot_water_via_heating = sample.hot_water_via_heating === true ? 'yes' : sample.hot_water_via_heating === false ? 'no' : 'unknown';
+  a.radiator_count = (/(\d+)\s+radiators?/i.exec(sample.radiator_info || '') || [])[1] || '';
   a.other_heat_source = /wood stove/i.test(sample.building_notes) ? 'yes' : 'unknown';
   a.solar_thermal = /solar thermal/i.test(sample.building_notes) ? 'yes' : 'unknown';
   a.building_notes = [sample.building_notes, sample.radiator_info].filter(Boolean).join('\n\n');
@@ -178,16 +217,24 @@ function loadSample(id) {
 }
 async function loadSamples() {
   try {
-    const responses = await Promise.all(['dev', 'eval'].map(set => fetch(`/data/raw/buildings/buildings_${set}.json`)));
-    if (responses.some(r => !r.ok)) throw new Error('Unavailable');
-    samples = (await Promise.all(responses.map(r => r.json()))).flat(); sampleError = '';
+    const response = await fetch('/api/samples');
+    if (!response.ok) throw new Error('Unavailable');
+    samples = await response.json(); sampleError = '';
   } catch { sampleError = 'Example homes could not be loaded. You can still check your own home.'; }
   if (state.step === 0) render();
 }
 function downloadSummary() {
-  const input = toEngineInput(values()), r = assessBuilding(input);
-  const lines = ['nuuEnergy — Your first heat pump assessment', 'Prototype indication; a heating professional must verify the details.', '', `Result: ${r.verdict.toUpperCase()}`, r.summary, '', 'WHAT WE KNOW', ...r.reasons.map(x => '- ' + x.text), '', 'HEATING POWER ESTIMATES', `Size/age: ${range(r.heating_load_kw.by_area)}`, `Consumption: ${range(r.heating_load_kw.by_consumption)}`, '', 'TECHNICIAN CHECKS', ...r.technician_checks.map(x => '- ' + x), '', 'OPEN QUESTIONS', ...r.homeowner_can_provide.map(x => '- ' + x), ...r.missing_information.map(x => '- ' + x), '', 'ASSUMPTIONS', ...r.assumptions.map(x => '- ' + x), r.cost_eur_per_year.note, '', 'YOUR ANSWERS', ...Object.entries(input.fields).map(([key, f]) => `${key}: ${f.value ?? 'Not provided'}`)];
-  lines.push('', 'ILLUSTRATIVE ANNUAL ENERGY COSTS', `Current heating: ${r.cost_eur_per_year.today === null ? 'More information needed' : money(r.cost_eur_per_year.today)}`, `Heat pump scenarios: ${r.cost_eur_per_year.heat_pump ? r.cost_eur_per_year.heat_pump.map(money).join('–') : 'More information needed'}`, 'Extra heat sources and solar hot water may change the comparison.');
+  if (assessment.status !== 'done') return;
+  const { decision: d, '01_heat_load': h, '02_radiator_check': r, '03_operating_cost': c } = assessment.data.outputs;
+  const cost = c.cost_eur_per_year, money2 = x => (x ? x.map(money).join('–') : 'More information needed');
+  const lines = ['nuuEnergy — Your first heat pump assessment', 'Prototype indication; a heating professional must verify the details.', '', `Result: ${d.verdict.toUpperCase()}`, d.summary, '',
+    'WHAT WE KNOW', ...d.reasons.map(x => '- ' + x.text), '',
+    'HEATING POWER ESTIMATES', `Size/age: ${range(h.heating_load_kw.by_area)}`, `Consumption: ${range(h.heating_load_kw.by_consumption)}`, `Used for this check: ${range(h.heating_load_kw.used)}`, '',
+    'WATER TEMPERATURE NEEDED', ...Object.entries(r.flow_temp_c.by_case || {}).map(([t, [lo, hi]]) => `- ${caseNames[t] || t}: ${lo}–${hi} °C`), '',
+    'TECHNICIAN CHECKS', ...d.technician_checks.map(x => '- ' + x), '',
+    'OPEN QUESTIONS', ...d.homeowner_can_provide.map(x => '- ' + x), '',
+    'ASSUMPTIONS', ...d.assumptions.map(x => '- ' + x), '',
+    'ILLUSTRATIVE ANNUAL ENERGY COSTS', `Current heating: ${cost.today === null ? 'More information needed' : money(cost.today)}`, `Heat pump scenarios: ${money2(cost.heat_pump)}`, ...(cost.note ? [`Note: ${cost.note}`] : [])];
   const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' }));
   const link = document.createElement('a'); link.href = url; link.download = 'my-heat-pump-home-check.txt'; link.click();
   setTimeout(() => URL.revokeObjectURL(url), 30000); announce('Your summary has been prepared for download.');

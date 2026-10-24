@@ -2,9 +2,9 @@
 
 ## Try the browser prototype
 
-With Node.js 20 or newer, run `npm run dev` and open [http://127.0.0.1:4173](http://127.0.0.1:4173). No installation or API key is needed. The English flow supports manual entry, five sample homes, answer review, larger text and a downloadable assessment. The calculation engine is a provisional preview awaiting the team's final model; bill extraction is not yet included.
+With Python 3.9 or newer, run `python3 scripts/serve.py` (or `npm run dev`) and open [http://127.0.0.1:4173](http://127.0.0.1:4173). No installation or API key is needed. The English flow supports manual entry, five sample homes, answer review, larger text and a downloadable assessment; the result comes from the Python decision engine in [src/decision_engine](src/decision_engine). Bill extraction is not yet included. The internal competition evaluation (engine vs. labels) is at [/evaluation.html](http://127.0.0.1:4173/evaluation.html).
 
-See [browser setup, integration and accessibility notes](docs/browser-flow.md). Run `npm test` for the assessment checks.
+See [browser setup, integration and accessibility notes](docs/browser-flow.md). Run `python3 -m unittest discover -s tests -v` (or `npm test`) for the engine checks.
 
 Research date: 24 October 2026. Build window supplied by the team: 11:00–18:00, Europe/Berlin. Team: software/architecture/data; mathematical modelling; product/management/presentation.
 

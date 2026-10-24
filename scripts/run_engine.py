@@ -7,9 +7,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+DEMO = ROOT / "data" / "demo"
 sys.path.insert(0, str(ROOT / "src" / "decision_engine"))
 
-import decision, heat_load, operating_cost, radiator_check  # noqa: E402
+import engine  # noqa: E402
 
 
 def load(path):
@@ -19,6 +20,10 @@ def load(path):
 def save(path, obj):
     path.write_text(json.dumps(obj, indent=2, ensure_ascii=False) + "\n")
     print("wrote", path.relative_to(ROOT))
+
+
+def load_steps(building_id):
+    return {p.stem: load(p) for p in sorted((DEMO / building_id / "processed").glob("*.json"))}
 
 
 def dev_check(building_id, heat, verdict):
@@ -37,23 +42,10 @@ def dev_check(building_id, heat, verdict):
 
 
 def main(building_id):
-    proc = ROOT / "data" / "demo" / building_id / "processed"
-    out = ROOT / "data" / "demo" / building_id / "output"
-    head = {"schema_version": "0.1", "building_id": building_id}
-
-    heat = {**head, "step": "01_heat_load", **heat_load.run(
-        load(proc / "01a_heat_load_by_area.json"), load(proc / "01b_heat_load_by_consumption.json"))}
-    save(out / "01_heat_load.json", heat)
-
-    rad = {**head, "step": "02_radiator_check", **radiator_check.run(load(proc / "02_radiator_check.json"), heat)}
-    save(out / "02_radiator_check.json", rad)
-
-    cost = {**head, "step": "03_operating_cost", **operating_cost.run(load(proc / "03_operating_cost.json"), rad)}
-    save(out / "03_operating_cost.json", cost)
-
-    dec = {**head, **decision.run(load(proc / "02_radiator_check.json"), heat, rad, cost)}
-    dec["dev_check"] = dev_check(building_id, heat, dec["verdict"])
-    save(out / "decision.json", dec)
+    outputs = engine.run(building_id, load_steps(building_id))
+    outputs["decision"]["dev_check"] = dev_check(building_id, outputs["01_heat_load"], outputs["decision"]["verdict"])
+    for name, obj in outputs.items():
+        save(DEMO / building_id / "output" / f"{name}.json", obj)
 
 
 if __name__ == "__main__":

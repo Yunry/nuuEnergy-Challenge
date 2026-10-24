@@ -1,30 +1,34 @@
 # Browser flow
 
-Run from the repository root with Node.js 20 or newer:
+Run from the repository root with Python 3.9 or newer (standard library only):
 
 ```sh
-npm run dev
+python3 scripts/serve.py
 ```
 
-Open http://127.0.0.1:4173. No dependency installation, build, API key or account is required. Use `PORT=4174 npm run dev` if the default port is occupied. Run `npm test` for the assessment adapter's regression checks.
+`npm run dev` runs the same command. Open http://127.0.0.1:4173. No dependency installation, build, API key or account is required. Use `PORT=4174 python3 scripts/serve.py` if the default port is occupied. Run `python3 -m unittest discover -s tests -v` (or `npm test`) for the engine regression checks.
+
+The internal competition evaluation is at http://127.0.0.1:4173/evaluation.html (see below).
 
 ## Scope
 
 English homeowner flow: welcome → home → heating → energy use → review → assessment. Optional fields and explicit unknown answers; five real sample homes; larger text; back/edit; tab-local session saving; summary download; printing; confirmation before clearing answers. No bill/photo upload or AI extraction is implemented yet. No hosting or deployment is required to run it locally.
 
-The UI uses the real challenge JSON files, strips development labels and never uses them to produce a verdict. Sample notes are preserved, and explicit wood-stove/solar-thermal mentions in these fixtures populate the related inputs; arbitrary homeowner text is not automatically interpreted.
+Sample homes are the demo customers' raw input (`data/demo/<id>/raw/customer_input.json`, served at `/api/samples`), which carries no development labels. Sample notes are preserved, and explicit wood-stove/solar-thermal mentions in these fixtures populate the related inputs; arbitrary homeowner text is not automatically interpreted.
 
 ## Engine integration
 
-`src/browser/app.js` collects the input and renders the result. `src/browser/assessment.js` contains `toEngineInput(values)` and `assessBuilding(input)`. The input wraps fields in `{ value, source, confidence, evidence }` and uses `schema_version: "0.1"`, following the team's draft contract. Self-reported values have `confidence: null`; we do not claim they are verified measurements. `amount` and `unit` are normalized to `annual_consumption_kwh` before calling the adapter.
+`src/browser/app.js` collects the answers and renders the result. `src/browser/assessment.js` turns them into a `customer_input` object with the dataset's field names (`toCustomerInput`) plus the structured answers the dataset keeps in free text (`consumption_full_year`, `radiator_count`, `radiator_type`, `other_heat_source`, `solar_thermal`). Only the listed keys are sent, so development labels cannot leak. "Not sure" becomes `null`; `amount` and `unit` are normalized to `annual_consumption_kwh`.
 
-The preview output uses `verdict`, `verdict_kind`, `summary`, `heating_load_kw`, `cost_eur_per_year`, `reasons`, `homeowner_can_provide`, `technician_checks` and `assumptions`. `missing_information` and `engine_version` are additive fields. Replace the pure `assessBuilding` function with the agreed engine when ready; keep `null` values and the array range convention. An asynchronous service will also need a visible loading state, timeout, error message and retry path in the UI.
+`scripts/serve.py` answers `POST /api/assess` with the Python decision engine (`src/decision_engine`): `prepare.py` turns `customer_input` into the four processed step inputs (`{value, source, confidence, evidence}`; self-reported values have `confidence: null`, a bill that is not a full year has `low`), and `engine.py` runs heat load → radiator check → operating cost → decision. The response is `{processed, outputs}` with the same files as `data/demo/<id>/output/`. The result page renders `outputs.decision` (verdict, summary, reasons, homeowner questions, boundaries, technician checks, assumptions) and the step outputs (heat-load estimates, required water temperature per radiator type, costs). Loading, error and retry states are shown while the request runs.
 
 ### Important modelling limitations
 
-This is a provisional rule-based browser preview, not the team's final model. It uses the supplied rough boiler and age formulas, does not enumerate radiator sizes, does not invent radiator capacities, and does not use the illustrative output fixture as ground truth. No numeric confidence probabilities or final equipment sizing are displayed. Green is limited to a promising underfloor-heating signal with some usable demand information and no confirmed single-pipe/high-temperature blocker; otherwise it asks for checks. Consequently it does **not** match every development reference (notably B-01). Do not present this as validated model accuracy.
+Radiator ratings per type are placeholders until checked against manufacturer data, and the form does not ask for radiator size, so a 600 × 1000 mm radiator is assumed. The form does not capture unheated areas or valves, which the hand-extracted demo files do, so a sample home in the browser can differ slightly from its row on the evaluation page. Costs are conditional energy scenarios, not savings promises. Do not present the result as validated model accuracy: on the three labelled homes the engine matches two verdicts (B-01 comes out yellow, expected green).
 
-The draft modelling document has assumptions still to resolve. The browser does not adopt its placeholder radiator ratings or an age-based radiator prior. It uses the organizer's approximate 2,000 full-load hours, not the example fixture's 1,800–2,100 interval labelled official. Solar contributions and unknown hot-water provision retain uncertainty. Costs are conditional energy scenarios, not savings promises. The UI does not claim that a single photo can settle room-by-room radiator suitability.
+## Internal evaluation page (not part of the product)
+
+`/evaluation.html` runs the engine fresh on every `data/demo/<id>/processed/` (via `GET /api/evaluation`, `scripts/evaluate.py`) and compares it with the organizers' labels in `data/raw/buildings/buildings_dev.json`: verdict match, reference heat load inside the used range, both heat-load estimates, flow temperature per radiator type, costs, and per customer the processed inputs with confidence and evidence plus all outputs. It is for the team's competition evaluation only; the homeowner flow never links to it or loads the labels.
 
 ## Accessibility decisions
 
@@ -51,4 +55,4 @@ W3C guidance used: https://www.w3.org/WAI/older-users/ and https://www.w3.org/WA
 7. Reload midway, verify tab-local answers; download and print the result; cancel then confirm reset.
 8. Run without external internet: manual input and locally served fixtures still work.
 
-The development server serves only the browser assets and the two dataset files; it does not expose repository metadata or arbitrary files.
+The development server serves only the two HTML pages, the browser assets and the three JSON endpoints; it does not expose repository metadata or arbitrary files.
