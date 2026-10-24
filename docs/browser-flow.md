@@ -16,6 +16,12 @@ English homeowner flow: welcome → home → heating → energy use → review �
 
 Sample homes are the demo customers' raw input (`data/demo/<id>/raw/customer_input.json`, served at `/api/samples`), which carries no development labels. Sample notes are preserved, and explicit wood-stove/solar-thermal mentions in these fixtures populate the related inputs; arbitrary homeowner text is not automatically interpreted.
 
+The same list also includes completed saved examples under `data/customers/D-B*/`. For example,
+`/?demo=D-B05` opens the latest saved B-05 photo assessment, including its original evidence and photos.
+This is separate from the original `/?demo=B-05` questionnaire-only case. Saved examples remain read-only;
+editing an answer or adding a file creates a new customer as usual. The saved photo readings include
+illustrative assumptions and do not represent a fresh AI extraction.
+
 ## Engine integration
 
 `src/browser/app.js` collects the answers and renders the result. `src/browser/assessment.js` turns them into a `customer_input` object with the dataset's field names (`toCustomerInput`) plus the structured answers the dataset keeps in free text (`consumption_full_year`, `radiator_count`, `radiator_type`, `other_heat_source`, `solar_thermal`). Only the listed keys are sent, so development labels cannot leak. "Not sure" becomes `null`; `amount` and `unit` are normalized to `annual_consumption_kwh`.
@@ -70,6 +76,25 @@ W3C guidance used: https://www.w3.org/WAI/older-users/ and https://www.w3.org/WA
 6. Enable larger text and test at 320px width and browser zoom; controls must remain usable.
 7. Reload midway, verify tab-local answers; download and print the result; cancel then confirm reset.
 8. Run without external internet: manual input and locally served fixtures still work.
+
+### Supplied-file API checks
+
+`python3 scripts/check_data_uploads.py` checks every distinct PDF/JPEG/PNG/WebP in `data/raw/`,
+`data/customer/` and saved customer examples through the HTTP upload route and loads every example result.
+It uses temporary customer folders and leaves the original data unchanged.
+
+`python3 scripts/check_data_uploads.py --live --output /tmp/nuu-data-upload-check.json` additionally sends
+each distinct file to the configured OpenAI API, passes reviewed facts through the assessment API,
+and verifies a repeated extraction reuses the cache. This uses API credits and transmits the supplied
+files, so run it only with permission to send those files. The report records status/counts rather
+than document text. A successful run verifies transport, response validation and pipeline compatibility,
+not the accuracy of every extracted fact. Ambiguous photos and documents without heating information
+may correctly produce no usable facts. The separately labelled `evaluate_extraction.py --live` checks
+known expected values for the combined utility bill and ambiguous pipe photo.
+
+Files with missing browser MIME types use the supported filename extension; the server still verifies
+the actual PDF/image signature. Uploads remain limited to three files and 10 MB per request, with
+additional batches retained in the customer's evidence history.
 
 The development server serves only the two HTML pages, the browser assets and the three JSON endpoints; it does not expose repository metadata or arbitrary files.
 
