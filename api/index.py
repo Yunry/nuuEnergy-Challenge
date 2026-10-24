@@ -3,10 +3,14 @@ import os
 from pathlib import Path
 import sys
 import tempfile
-from urllib.parse import parse_qs, urlparse
+import traceback
+from urllib.parse import parse_qs, urlencode, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / 'scripts'))
+for d in (ROOT / 'scripts', Path.cwd() / 'scripts', ROOT / 'src' / 'decision_engine', Path.cwd() / 'src' / 'decision_engine'):
+    if d.is_dir() and str(d) not in sys.path:
+        sys.path.insert(0, str(d))
+
 if os.environ.get('VERCEL'):
     # The deployed source tree is read-only. Demo/customer writes use instance-local scratch space.
     os.environ.setdefault('NUUENERGY_DATA_DIR', str(Path(tempfile.gettempdir()) / 'nuuenergy' / 'data' / 'demo'))
@@ -29,9 +33,17 @@ class handler(Handler):
             self.path = base + (('?' + parsed.query) if parsed.query else '')
 
     def do_GET(self):
-        self.original_path()
-        super().do_GET()
+        try:
+            self.original_path()
+            super().do_GET()
+        except Exception as exc:
+            traceback.print_exc()
+            self.send(500, json.dumps({"error": f"Internal server error: {exc}"}).encode(), "application/json; charset=utf-8")
 
     def do_POST(self):
-        self.original_path()
-        super().do_POST()
+        try:
+            self.original_path()
+            super().do_POST()
+        except Exception as exc:
+            traceback.print_exc()
+            self.send(500, json.dumps({"error": f"Internal server error: {exc}"}).encode(), "application/json; charset=utf-8")

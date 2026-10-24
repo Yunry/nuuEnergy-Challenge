@@ -3,6 +3,7 @@
 usage: python3 scripts/run_engine.py B-03
 """
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -23,7 +24,11 @@ def save(path, obj):
 
 
 def load_steps(building_id):
-    return {p.stem: load(p) for p in sorted((DEMO / building_id / "processed").glob("*.json"))}
+    data_dir = Path(os.environ.get('NUUENERGY_DATA_DIR', str(DEMO)))
+    folder = data_dir / building_id / "processed"
+    if not folder.exists():
+        folder = DEMO / building_id / "processed"
+    return {p.stem: load(p) for p in sorted(folder.glob("*.json"))}
 
 
 def dev_check(building_id, heat, verdict):

@@ -65,12 +65,18 @@ SAVED_CUSTOMERS = ROOT / 'data' / 'customers'
 
 
 def customer_folder(customer_id):
-    return (SAVED_CUSTOMERS if re.fullmatch(r'D-B\d+', customer_id) else DEMO) / customer_id
+    base = SAVED_CUSTOMERS if re.fullmatch(r'D-B\d+', customer_id) else DEMO
+    folder = base / customer_id
+    if not folder.exists() and base == DEMO and (FIXTURE_DEMO / customer_id).exists():
+        return FIXTURE_DEMO / customer_id
+    return folder
 
 
 def samples():
     """Challenge homes plus completed saved examples, excluding the mutable live workspace."""
     homes = [json.loads(p.read_text()) for p in sorted(DEMO.glob("B-[0-9]*/raw/customer_input.json"))]
+    if not homes:
+        homes = [json.loads(p.read_text()) for p in sorted(FIXTURE_DEMO.glob("B-[0-9]*/raw/customer_input.json"))]
     for path in sorted(SAVED_CUSTOMERS.glob('D-B[0-9]*/raw/customer_input.json')):
         folder = path.parent.parent
         if not customer_steps.step_dirs(folder):
