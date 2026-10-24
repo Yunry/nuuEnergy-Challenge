@@ -56,6 +56,21 @@ def fields(ci):
         f["radiator_type"].update(confidence="low", alternatives=RADIATOR_TYPES)
     for k in ("unheated_area", "insulation", "radiator_size_mm", "valves_to_replace"):  # not asked in the form
         f[k] = {"value": None, "source": "homeowner", "confidence": None, "evidence": "not asked"}
+    # Only keep provenance for values explicitly selected in the review UI and still unchanged.
+    evidence = ci.get('extraction_evidence')
+    if isinstance(evidence, dict):
+        for key, item in evidence.items():
+            if (key in f and isinstance(item, dict) and f[key]['value'] is not None
+                    and type(item.get('value')) is type(f[key]['value'])
+                    and item['value'] == f[key]['value']
+                    and item.get('confidence') in ('high', 'medium', 'low')
+                    and isinstance(item.get('source_file'), str)
+                    and isinstance(item.get('evidence'), str)):
+                current = f[key]['confidence']
+                ranks = {'high': 0, None: 0, 'medium': 1, 'low': 2}
+                confidence = max((current, item['confidence']), key=lambda c: ranks[c])
+                f[key].update(source='confirmed_upload.' + item['source_file'][:200],
+                              confidence=confidence, evidence=item['evidence'][:1500])
     return f
 
 

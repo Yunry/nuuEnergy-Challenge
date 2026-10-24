@@ -23,7 +23,10 @@ import engine  # noqa: E402
 import prepare  # noqa: E402
 import scenarios  # noqa: E402
 from evaluate import evaluate  # noqa: E402
+import ai_extract  # noqa: E402
 from run_engine import DEMO, load_steps  # noqa: E402
+
+ai_extract.load_env(ROOT / '.env')
 
 ALLOWED = re.compile(r"^/(index\.html|evaluation\.html|src/browser/[A-Za-z0-9_.-]+\.(js|css))$")
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8"}
@@ -65,6 +68,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.api(samples)
         if path == "/api/evaluation":
             return self.api(evaluate)
+        if path == "/api/ai-status":
+            return self.api(lambda: {"available": ai_extract.configured()})
         match = re.fullmatch(r"/api/demo/(B-\d+)", path)
         if match and any((DEMO / match[1] / "processed").glob("*.json")):
             return self.api(demo, match[1])
@@ -75,10 +80,19 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
-        if path not in ("/api/assess", "/api/scenarios"):
+        if path not in ("/api/assess", "/api/scenarios", "/api/extract"):
             return self.send(404, b"Not found")
-        length = int(self.headers.get("Content-Length") or 0)
-        if length > MAX_BODY:
+        # This local API accepts same-origin JSON only, including for paid AI requests.
+        origin = self.headers.get('Origin')
+        if origin and origin != 'http://' + self.headers.get('Host', ''):
+            return self.send(403, b"Cross-origin requests are not allowed")
+        if self.headers.get_content_type() != 'application/json':
+            return self.send(415, b"Expected application/json")
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return self.send(400, b"Invalid content length")
+        if length < 1 or length > (15 * 1024 * 1024 if path == '/api/extract' else MAX_BODY):
             return self.send(413, b"Request too large")
         try:
             body = json.loads(self.rfile.read(length))
@@ -87,6 +101,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(400, b"Expected a JSON object")
         if path == "/api/scenarios":
             return self.api(scenarios.run, body["processed"], body.get("values"))
+        if path == '/api/extract':
+            try:
+                result = ai_extract.extract(body)
+                return self.send(200, json.dumps(result, ensure_ascii=False).encode(), 'application/json; charset=utf-8')
+            except ai_extract.ExtractionError as exc:
+                return self.send(exc.status, json.dumps({'error': str(exc)}).encode(), 'application/json; charset=utf-8')
+            except Exception:
+                # Do not log document data, credentials or upstream response bodies.
+                return self.send(502, b'{"error":"AI extraction failed. Try again or enter answers manually."}', 'application/json; charset=utf-8')
         self.api(assess, body)
 
 
