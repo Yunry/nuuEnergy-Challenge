@@ -1,0 +1,23 @@
+{
+  "schema_version": "0.1",
+  "building_id": "B-02",
+  "step": "02_radiator_check",
+  "inputs_as_ranges": {
+    "radiator_type": []
+  },
+  "flow_temp_c": {
+    "required": [
+      35,
+      35
+    ],
+    "by_case": {
+      "underfloor": [
+        35,
+        35
+      ]
+    }
+  },
+  "assumptions": [
+    "Underfloor heating: flow temperature around 35 C (official)"
+  ]
+}

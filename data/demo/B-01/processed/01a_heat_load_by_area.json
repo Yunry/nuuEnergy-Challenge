@@ -1,0 +1,52 @@
+{
+  "schema_version": "0.1",
+  "building_id": "B-01",
+  "step": "01a_heat_load_by_area",
+  "depends_on": [],
+  "raw_inputs": [
+    {
+      "id": "customer_input",
+      "type": "json",
+      "ref": "data/demo/B-01/raw/customer_input.json"
+    }
+  ],
+  "fields": {
+    "construction_year": {
+      "value": 2001,
+      "source": "customer_input.construction_year",
+      "confidence": "high",
+      "evidence": "2001"
+    },
+    "floor_area_m2": {
+      "value": 195,
+      "source": "customer_input.floor_area_m2",
+      "confidence": "high",
+      "evidence": "195"
+    },
+    "renovation_status": {
+      "value": null,
+      "source": "customer_input.renovation_status",
+      "confidence": null,
+      "evidence": "not documented"
+    },
+    "unheated_area": {
+      "value": null,
+      "source": "customer_input.building_notes",
+      "confidence": "medium",
+      "evidence": "none mentioned"
+    },
+    "insulation": {
+      "value": [
+        "windows U 1.1",
+        "external wall U 0.21",
+        "basement wall U 0.35",
+        "roof U ~0.24",
+        "floor slab U ~0.35"
+      ],
+      "source": "customer_input.building_notes",
+      "confidence": "medium",
+      "evidence": "U-values stated by the owner: windows 1.1, external wall 0.21, basement wall 0.35, roof approx. 0.24, floor slab approx. 0.35 W/(m²K)."
+    }
+  },
+  "reference_data": {}
+}

@@ -1,0 +1,38 @@
+{
+  "schema_version": "0.1",
+  "building_id": "B-01",
+  "step": "01_heat_load",
+  "inputs_as_ranges": {
+    "heated_area_m2": [
+      195,
+      195
+    ],
+    "full_load_hours": [
+      1800,
+      2100
+    ]
+  },
+  "heating_load_kw": {
+    "by_area": [
+      7.8,
+      23.4
+    ],
+    "by_consumption": [
+      2.3,
+      2.7
+    ],
+    "consistent": false,
+    "used": [
+      2.3,
+      23.4
+    ],
+    "w_per_m2": [
+      12,
+      120
+    ]
+  },
+  "assumptions": [
+    "Built 2001 (gap in official table): 40-120 W/m2, spanning both neighbouring rows",
+    "Full-load hours 1800-2100 h (official approx. 2,000; range ours)"
+  ]
+}

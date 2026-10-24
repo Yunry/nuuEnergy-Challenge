@@ -1,0 +1,21 @@
+{
+  "schema_version": "0.1",
+  "building_id": "B-01",
+  "step": "03_operating_cost",
+  "jaz": [
+    2.8,
+    3.5
+  ],
+  "cost_eur_per_year": {
+    "today": null,
+    "heat_pump": [
+      654,
+      817
+    ],
+    "saving": null,
+    "note": "only combinations up to 60 C; above 60 C there is no official JAZ; no official price for 'lpg': today's cost not computed"
+  },
+  "assumptions": [
+    "Heat pump also covers hot water, at the same JAZ as space heating"
+  ]
+}

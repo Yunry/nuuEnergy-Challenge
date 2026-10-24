@@ -10,18 +10,18 @@
       "flips_verdict": true,
       "thresholds": [
         {
-          "range": ">= 36.8",
-          "per_radiator": ">= 2.45",
+          "range": ">= 35.7",
+          "per_radiator": ">= 2.38",
           "result": "green: runs at <= 55 C"
         },
         {
-          "range": "29.3-36.8",
-          "per_radiator": "1.96-2.45",
+          "range": "29.3-35.7",
+          "per_radiator": "1.95-2.38",
           "result": "yellow: needs 55-60 C, higher running cost"
         },
         {
           "range": "< 29.3",
-          "per_radiator": "< 1.96",
+          "per_radiator": "< 1.95",
           "result": "needs > 60 C: some radiators should be upgraded"
         }
       ],
@@ -37,7 +37,7 @@
     },
     {
       "type": "unknown",
-      "text": "Radiator type unknown: with Type 33 the house runs at about 50-53 C, with Type 22 at about 58-62 C, with Type 11 above 75 C.",
+      "text": "Radiator type unknown: the house runs with Type 33 at about 50-53 C, with Type 22 at about 58-62 C, with Type 11 at about 77-84 C.",
       "source": "radiator_type"
     },
     {
@@ -62,13 +62,12 @@
     "Outdoor unit placement, sound and permits"
   ],
   "assumptions": [
+    "Unheated area of unknown size (top floor, size unknown): heated area 70-100 % of floor area",
     "Partially renovated, built before 1979: 80-120 W/m2 (no official row for 'partially')",
-    "Unheated top floor of unknown size: heated area 70-100 % of floor area",
-    "Full-load hours 1,800-2,100 h (official range)",
+    "Full-load hours 1800-2100 h (official approx. 2,000; range ours)",
     "Radiator size unknown: assumed 600 x 1000 mm",
-    "Radiator output at other temperatures: EN 442 exponent n = 1.3, 10 K spread",
-    "Heat pump also covers hot water (hot_water_via_heating = true)",
-    "Official fixed prices: oil 17 ct/kWh, heat-pump electricity 26 ct/kWh"
+    "Radiator output vs temperature: EN 442, n = 1.3, 10 K spread",
+    "Heat pump also covers hot water, at the same JAZ as space heating"
   ],
   "dev_check": {
     "reference_heating_load_kw": 14.5,

@@ -29,7 +29,11 @@ Status:
 
 - B-01 … B-05: `raw/customer_input.json` copied from [../raw/buildings](../raw/buildings) without the dev labels
   `reference_heating_load_kw` and `expected_verdict` (a customer would not know them; they stay in `raw/buildings`).
-- B-03: fully worked example (`processed/` and `output/` split from the earlier example input/output). Numbers are illustrative.
-- Others: `processed/` and `output/` empty until extraction and the engine run.
+- `processed/`: B-03 split from the earlier example input; the others extracted by hand from `raw/` as a
+  stand-in for the LLM extraction step (dataset values `high`, facts read from free text `medium`).
+- `output/`: written by `python3 scripts/run_engine.py <customer>`. Radiator ratings are still placeholders.
+- Schematic of every step with its inputs and outputs, and the results for all customers:
+  [../../docs/decision_engine_schematic.pdf](../../docs/decision_engine_schematic.pdf)
+  (`python3 scripts/plot_engine_schematic.py`).
 
 `data/raw/` stays the master copy of everything we collected and is not changed.

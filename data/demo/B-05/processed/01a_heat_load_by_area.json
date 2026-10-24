@@ -1,0 +1,49 @@
+{
+  "schema_version": "0.1",
+  "building_id": "B-05",
+  "step": "01a_heat_load_by_area",
+  "depends_on": [],
+  "raw_inputs": [
+    {
+      "id": "customer_input",
+      "type": "json",
+      "ref": "data/demo/B-05/raw/customer_input.json"
+    }
+  ],
+  "fields": {
+    "construction_year": {
+      "value": 2006,
+      "source": "customer_input.construction_year",
+      "confidence": "high",
+      "evidence": "2006"
+    },
+    "floor_area_m2": {
+      "value": 125,
+      "source": "customer_input.floor_area_m2",
+      "confidence": "high",
+      "evidence": "125"
+    },
+    "renovation_status": {
+      "value": null,
+      "source": "customer_input.renovation_status",
+      "confidence": null,
+      "evidence": "not documented"
+    },
+    "unheated_area": {
+      "value": null,
+      "source": "customer_input.building_notes",
+      "confidence": "medium",
+      "evidence": "none mentioned"
+    },
+    "insulation": {
+      "value": [
+        "no additional facade or roof insulation",
+        "double low-e glazing"
+      ],
+      "source": "customer_input.building_notes",
+      "confidence": "medium",
+      "evidence": "No additional insulation on facade or roof. Double low-e glazing."
+    }
+  },
+  "reference_data": {}
+}

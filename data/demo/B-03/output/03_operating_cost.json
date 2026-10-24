@@ -17,5 +17,8 @@
       4185
     ],
     "note": "only combinations up to 60 C; above 60 C there is no official JAZ"
-  }
+  },
+  "assumptions": [
+    "Heat pump also covers hot water, at the same JAZ as space heating"
+  ]
 }

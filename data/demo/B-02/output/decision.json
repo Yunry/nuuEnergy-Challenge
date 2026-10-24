@@ -1,0 +1,34 @@
+{
+  "schema_version": "0.1",
+  "building_id": "B-02",
+  "verdict": "green",
+  "verdict_kind": "ready",
+  "summary": "A heat pump can very likely heat this house with the existing heating system at <= 55 C.",
+  "boundaries": [],
+  "reasons": [
+    {
+      "type": "positive",
+      "text": "Underfloor heating works at low flow temperatures (around 35 C).",
+      "source": "heat_distribution"
+    }
+  ],
+  "homeowner_can_provide": [],
+  "technician_checks": [
+    "Exact heat load (DIN EN 12831)",
+    "Electrical capacity and meter cabinet",
+    "Outdoor unit placement, sound and permits"
+  ],
+  "assumptions": [
+    "Full-load hours 1800-2100 h (official approx. 2,000; range ours)",
+    "Hot-water share of the bill uncertain (unknown or solar thermal): subtract 0 to full per-person amount",
+    "Other heat source in use: the bill misses part of the demand, area method used alone",
+    "Underfloor heating: flow temperature around 35 C (official)",
+    "Heat pump also covers hot water, at the same JAZ as space heating"
+  ],
+  "dev_check": {
+    "reference_heating_load_kw": 9.7,
+    "expected_verdict": "green",
+    "verdict_match": true,
+    "reference_in_range": true
+  }
+}

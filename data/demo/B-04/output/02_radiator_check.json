@@ -1,0 +1,36 @@
+{
+  "schema_version": "0.1",
+  "building_id": "B-04",
+  "step": "02_radiator_check",
+  "inputs_as_ranges": {
+    "radiator_type": [
+      "11",
+      "22",
+      "33"
+    ]
+  },
+  "flow_temp_c": {
+    "required": [
+      44,
+      97
+    ],
+    "by_case": {
+      "11": [
+        65,
+        97
+      ],
+      "22": [
+        50,
+        71
+      ],
+      "33": [
+        44,
+        59
+      ]
+    }
+  },
+  "assumptions": [
+    "Radiator size unknown: assumed 600 x 1000 mm",
+    "Radiator output vs temperature: EN 442, n = 1.3, 10 K spread"
+  ]
+}

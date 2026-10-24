@@ -1,0 +1,37 @@
+{
+  "schema_version": "0.1",
+  "building_id": "B-04",
+  "step": "01_heat_load",
+  "inputs_as_ranges": {
+    "heated_area_m2": [
+      160,
+      160
+    ],
+    "full_load_hours": [
+      1800,
+      2100
+    ]
+  },
+  "heating_load_kw": {
+    "by_area": [
+      12.8,
+      19.2
+    ],
+    "by_consumption": [
+      9.0,
+      10.6
+    ],
+    "consistent": false,
+    "used": [
+      9.0,
+      19.2
+    ],
+    "w_per_m2": [
+      57,
+      120
+    ]
+  },
+  "assumptions": [
+    "Full-load hours 1800-2100 h (official approx. 2,000; range ours)"
+  ]
+}

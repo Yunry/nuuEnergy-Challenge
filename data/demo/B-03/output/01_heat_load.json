@@ -30,5 +30,10 @@
       79,
       92
     ]
-  }
+  },
+  "assumptions": [
+    "Unheated area of unknown size (top floor, size unknown): heated area 70-100 % of floor area",
+    "Partially renovated, built before 1979: 80-120 W/m2 (no official row for 'partially')",
+    "Full-load hours 1800-2100 h (official approx. 2,000; range ours)"
+  ]
 }

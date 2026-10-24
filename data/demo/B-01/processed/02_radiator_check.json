@@ -1,0 +1,76 @@
+{
+  "schema_version": "0.1",
+  "building_id": "B-01",
+  "step": "02_radiator_check",
+  "depends_on": [
+    "output/01_heat_load.json"
+  ],
+  "raw_inputs": [
+    {
+      "id": "customer_input",
+      "type": "json",
+      "ref": "data/demo/B-01/raw/customer_input.json"
+    }
+  ],
+  "fields": {
+    "heat_distribution": {
+      "value": "radiators",
+      "source": "customer_input.heat_distribution",
+      "confidence": "high",
+      "evidence": "radiators"
+    },
+    "pipe_system": {
+      "value": null,
+      "source": "customer_input.pipe_system",
+      "confidence": null,
+      "evidence": "unknown"
+    },
+    "flow_temperature_c": {
+      "value": null,
+      "source": "customer_input.flow_temperature_c",
+      "confidence": null,
+      "evidence": "not documented"
+    },
+    "radiator_count": {
+      "value": 14,
+      "source": "customer_input.radiator_info",
+      "confidence": "high",
+      "evidence": "14 radiators"
+    },
+    "radiator_type": {
+      "value": null,
+      "source": "customer_input.radiator_info",
+      "confidence": "low",
+      "evidence": "type and age not documented",
+      "alternatives": [
+        "11",
+        "22",
+        "33"
+      ]
+    },
+    "radiator_size_mm": {
+      "value": null,
+      "source": "customer_input.radiator_info",
+      "confidence": null,
+      "evidence": "not documented"
+    },
+    "valves_to_replace": {
+      "value": 0,
+      "source": "customer_input.radiator_info",
+      "confidence": "medium",
+      "evidence": "valves with presetting (already preset)"
+    }
+  },
+  "reference_data": {
+    "radiator_rated_kw_each": {
+      "value": {
+        "11": 1.0,
+        "22": 1.8,
+        "33": 2.6
+      },
+      "source": "own_table",
+      "confidence": "low",
+      "evidence": "PLACEHOLDER for 600x1000 mm at 75/65/20 C, to be verified from manufacturer catalogs"
+    }
+  }
+}

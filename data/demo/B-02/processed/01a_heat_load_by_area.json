@@ -1,0 +1,46 @@
+{
+  "schema_version": "0.1",
+  "building_id": "B-02",
+  "step": "01a_heat_load_by_area",
+  "depends_on": [],
+  "raw_inputs": [
+    {
+      "id": "customer_input",
+      "type": "json",
+      "ref": "data/demo/B-02/raw/customer_input.json"
+    }
+  ],
+  "fields": {
+    "construction_year": {
+      "value": 2005,
+      "source": "customer_input.construction_year",
+      "confidence": "high",
+      "evidence": "2005"
+    },
+    "floor_area_m2": {
+      "value": 180,
+      "source": "customer_input.floor_area_m2",
+      "confidence": "high",
+      "evidence": "180"
+    },
+    "renovation_status": {
+      "value": null,
+      "source": "customer_input.renovation_status",
+      "confidence": null,
+      "evidence": "not documented"
+    },
+    "unheated_area": {
+      "value": null,
+      "source": "customer_input.building_notes",
+      "confidence": "medium",
+      "evidence": "none mentioned"
+    },
+    "insulation": {
+      "value": null,
+      "source": "customer_input.building_notes",
+      "confidence": null,
+      "evidence": "not documented"
+    }
+  },
+  "reference_data": {}
+}
