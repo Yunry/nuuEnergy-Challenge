@@ -4,7 +4,7 @@ import { extractFiles, applyFields, fieldLabels, uploadFiles, validateFiles } fr
 const app = document.querySelector('#app');
 const storageKey = 'nuu-home-check-v1';
 const empty = () => ({ construction_year: '', floor_area_m2: '', renovation_status: 'unknown', energy_carrier: 'unknown', heat_distribution: 'unknown', amount: '', unit: 'kwh', consumption_full_year: 'unknown', persons_in_household: '', hot_water_via_heating: 'unknown', flow_temperature_c: '', pipe_system: 'unknown', radiator_count: '', radiator_type: 'unknown', other_heat_source: 'unknown', solar_thermal: 'unknown', building_notes: '', building_id: 'HOME' });
-let state = { step: 0, answers: empty(), larger: false, sample: false, evidence: {}, confirm: {} };
+let state = { step: 0, answers: empty(), larger: false, sample: false, evidence: {}, confirm: {}, mode: 'both' };
 try {
   const saved = JSON.parse(sessionStorage.getItem(storageKey));
   if (saved?.answers && Number.isInteger(saved.step) && saved.step >= 0 && saved.step <= 7) state = { ...state, ...saved, answers: { ...empty(), ...saved.answers } };
@@ -163,7 +163,59 @@ function formPage() {
   const titles = ['Your home check starts here.', 'How do you keep your home warm?', 'A little about your energy use.', 'Does everything look right?'];
   const intros = ['Let AI help with the paperwork, or tell us what you know.', 'Choose what you know. You can always come back and change an answer.', 'These details help us give a more useful estimate. Nothing here needs to be exact.', 'You’re in control. Check your answers before we put your first assessment together.'];
   const content = [homeForm, heatingForm, energyForm, review][state.step - 1]();
-  return `<main id="main" class="flow-main">${progress()}<div class="flow-layout"><section class="form-panel"><p class="eyebrow">Step ${state.step} of 4</p><h1 id="page-title" tabindex="-1">${titles[state.step - 1]}</h1><p class="intro">${intros[state.step - 1]}</p>${errorSummary()}${state.step > 1 ? helperPrompt() : ''}<form id="home-form" novalidate>${content}<div class="form-actions"><button type="button" class="back-button" data-go="${returnToReview ? 4 : state.step - 1}"><span aria-hidden="true">←</span> ${returnToReview ? 'Cancel changes' : 'Back'}</button><button type="submit" class="button primary">${state.step === 4 ? 'See my assessment' : returnToReview ? 'Save changes' : state.step === 1 ? 'Continue to my heating' : 'Continue'} ${chevron}</button></div></form></section><aside class="flow-aside"><div class="encouragement"><span class="aside-kicker">A little reassurance</span><h2>You don’t need to be an expert.</h2><p>“I’m not sure” is a useful answer, too. We’ll tell you which details a heating professional can help with.</p><hr><p class="small">Your answers stay in this tab. You can go back without losing them.</p></div><p class="prototype-note">This is an initial indication, not a final design or an installation quote.</p></aside></div></main>`;
+  const panel = `<section class="form-panel"><p class="eyebrow">Step ${state.step} of 4</p><h1 id="page-title" tabindex="-1">${titles[state.step - 1]}</h1><p class="intro">${intros[state.step - 1]}</p>${errorSummary()}${state.step > 1 ? helperPrompt() : ''}<form id="home-form" novalidate>${content}<div class="form-actions"><button type="button" class="back-button" data-go="${returnToReview ? 4 : state.step - 1}"><span aria-hidden="true">←</span> ${returnToReview ? 'Cancel changes' : 'Back'}</button><button type="submit" class="button primary">${state.step === 4 ? 'See my assessment' : returnToReview ? 'Save changes' : state.step === 1 ? 'Continue to my heating' : 'Continue'} ${chevron}</button></div></form></section>`;
+  if (state.step === 4 && state.mode === 'developer') return `<main id="main" class="result-main rp">${progress()}<h1 id="page-title" tabindex="-1">Inputs and how they are used</h1>${devInputPanel()}
+    <div class="form-actions"><button type="button" class="back-button" data-go="3">← Back</button><button type="button" class="button primary" data-go="5">See my assessment ${chevron}</button></div></main>`;
+  if (state.step === 4 && state.mode === 'both') return `<main id="main" class="result-main split">${progress()}<div class="split-panes">
+    <section class="pane pane-customer" aria-label="Customer view"><p class="pane-label">Customer view</p>${panel}</section>
+    <section class="pane pane-dev rp" aria-label="Developer view"><p class="pane-label">Developer view</p>${devInputPanel()}</section></div></main>`;
+  return `<main id="main" class="flow-main">${progress()}<div class="flow-layout">${panel}<aside class="flow-aside"><div class="encouragement"><span class="aside-kicker">A little reassurance</span><h2>You don’t need to be an expert.</h2><p>“I’m not sure” is a useful answer, too. We’ll tell you which details a heating professional can help with.</p><hr><p class="small">Your answers stay in this tab. You can go back without losing them.</p></div><p class="prototype-note">This is an initial indication, not a final design or an installation quote.</p></aside></div></main>`;
+}
+// Developer view of the inputs (review step): upper = every raw input as a file tile, middle = the extracted, uniform
+// data the engine will use, lower = the four decision steps computed from that data.
+let rawFiles = { id: null, files: [] };
+function loadRawFiles(id) {
+  rawFiles = { id, files: [] };
+  fetch(`/api/customer/${encodeURIComponent(id)}/files`).then(r => (r.ok ? r.json() : [])).then(files => {
+    if (rawFiles.id === id) { rawFiles.files = files; refreshDevInput(); }
+  }).catch(() => {});
+}
+function refreshDevInput() { const el = document.querySelector('#dev-input'); if (el) el.innerHTML = devInputBody(); }
+const FILE_ROLE = { 'questionnaire.json': 'questionnaire', 'customer_input.json': 'questionnaire (dataset)', 'extraction.json': 'AI extraction' };
+function fileTile(id, f) {
+  const role = FILE_ROLE[f.name] || (f.path.startsWith('photos/') ? 'photo' : 'document');
+  return `<a class="di-tile" href="/api/customer/${encodeURIComponent(id)}/raw/${f.path.split('/').map(encodeURIComponent).join('/')}" target="_blank" rel="noopener">
+    <span class="di-icon ${escape(f.kind)}" aria-hidden="true">${escape(f.kind.toUpperCase())}</span><span class="di-name">${escape(f.name)}</span><span class="di-meta">${role} · ${formatNumber(f.size / 1024)} KB</span></a>`;
+}
+function sourceKind(key, f) {
+  const src = String(f.source || '');
+  if (src.startsWith('confirmed_upload.') || src.startsWith('upload:')) return ['file', `from ${src.split(/[.:]/).slice(1).join('.')}`];
+  if (src.startsWith('homeowner') || src === 'scenario') return ['questionnaire', 'questionnaire'];
+  if (src.startsWith('customer_input.') && src.slice(15) !== key) return ['file', `extracted from ${src.slice(15)}`];
+  return ['questionnaire', src.replace('customer_input.', 'questionnaire · ')];
+}
+function devInputPanel() { return `<div id="dev-input">${devInputBody()}</div>`; }
+function devInputBody() {
+  if (!ensureAssessment()) return `<p class="wi-status">${assessment.status === 'error' ? 'The inputs could not be processed.' : 'Preparing the uniform data…'}</p>`;
+  const { processed: p, outputs: o } = assessment.data, id = p['02_radiator_check'].building_id;
+  if (rawFiles.id !== id) loadRawFiles(id);
+  const saved = rawFiles.files.some(f => FILE_ROLE[f.name]?.startsWith('questionnaire'));
+  const current = saved ? '' : `<details class="di-tile di-inline"><summary><span class="di-icon json" aria-hidden="true">JSON</span><span class="di-name">questionnaire.json</span><span class="di-meta">current answers · not saved yet</span></summary><pre>${escape(JSON.stringify(toCustomerInput(values()), null, 2))}</pre></details>`;
+  const fields = new Map();
+  for (const step of Object.values(p)) for (const [k, f] of Object.entries(step.fields)) if (!fields.has(k) && f.evidence !== 'not asked') fields.set(k, f);
+  const value = v => (v === null || v === undefined ? '—' : Array.isArray(v) ? v.join(typeof v[0] === 'number' ? ' × ' : ', ') : typeof v === 'boolean' ? (v ? 'yes' : 'no') : v);
+  const rows = [...fields].map(([k, f]) => {
+    const [kind, label] = sourceKind(k, f);
+    return `<tr><th scope="row">${escape(k)}</th><td>${escape(value(f.value))}</td><td><span class="di-conf ${escape(f.confidence ?? 'given')}">${escape(f.confidence ?? 'as given')}</span></td><td><span class="di-src ${kind}">${escape(label)}</span></td><td>${escape(f.evidence ?? '')}</td></tr>`;
+  }).join('');
+  return `<section class="rp-layer" aria-label="Input space"><p class="rp-layer-label">Input space · data/demo/${escape(id)}/raw/</p>
+      <div class="di-files">${current}${rawFiles.files.map(f => fileTile(id, f)).join('') || (current ? '' : '<p class="small">Loading files…</p>')}</div></section>
+    <div class="rp-link" aria-hidden="true">↓</div>
+    <section class="rp-layer" aria-label="Extracted information"><p class="rp-layer-label">Extracted information · uniform data the engine uses</p>
+      <div class="eval-scroll"><table class="eval-table di-table"><thead><tr><th>Field</th><th>Value</th><th>Confidence</th><th>Source</th><th>Evidence</th></tr></thead><tbody>${rows}</tbody></table></div></section>
+    <div class="rp-link" aria-hidden="true">↓</div>
+    <section class="rp-layer" aria-label="Decision steps"><p class="rp-layer-label">4 decision steps · computed from the table above</p>
+      <ol class="rp-steps">${stepCards(p, o).map((x, i) => `<li class="rp-card rp-step"><p class="rp-num">Step ${i + 1}</p><h2>${x.title}</h2><p>${escape(x.sentence)}</p><code class="rp-eq">${escape(x.equation)}</code><p class="rp-result">${escape(x.result)}</p></li>`).join('')}</ol></section>`;
 }
 let assessment = { key: null, status: 'idle', data: null };
 // An unchanged example home is assessed from its hand-extracted files (with real evidence); anything else from the form.
@@ -174,6 +226,7 @@ async function runAssessment(key, input) {
     const data = await (key.startsWith('demo:') ? demo(key.slice(5)) : assess(input));
     if (assessment.key === key) assessment = { key, status: 'done', data };
   } catch { if (assessment.key === key) assessment = { key, status: 'error', data: null }; }
+  if (state.step === 4 && assessment.key === key) { refreshDevInput(); return; }
   if (state.step >= 5 && assessment.key === key) {
     render(); document.querySelector('#page-title')?.focus();
     announce(assessment.status === 'done' ? 'Your first assessment is ready.' : 'The assessment could not be completed.');
@@ -271,6 +324,7 @@ function costBars(cost, fuel) {
 
 // Starts the assessment for the current answers if needed; true once its result is ready.
 function ensureAssessment() {
+  if (!sampleUnchanged()) customerId();
   const input = { ...toCustomerInput(values()), extraction_evidence: Object.fromEntries(reviewedEvidence()) }, key = sampleUnchanged() ? `demo:${state.answers.building_id}` : JSON.stringify(input);
   if (assessment.key !== key) {
     if (state.confirmKey !== key) { state.confirm = {}; state.confirmKey = key; whatIf = { processed: null }; save(); }
@@ -284,12 +338,20 @@ function resultPage() {
   if (assessment.status === 'loading') return `<main id="main" class="result-main">${top}<section class="verdict-panel" aria-busy="true"><div><h1 id="page-title" tabindex="-1">Checking your answers…</h1><p class="lead">This usually takes a moment.</p></div></section></main>`;
   if (assessment.status === 'error') return `<main id="main" class="result-main">${top}<section class="verdict-panel yellow"><div><h1 id="page-title" tabindex="-1">We couldn’t complete the check.</h1><p class="lead">The calculation did not respond. Your answers are still saved in this tab.</p><div class="result-actions"><button class="button primary" data-retry-assess>Try again</button></div></div></section></main>`;
 
-  const { processed: p, outputs: o } = assessment.data, d = o.decision, cost = o['03_operating_cost'].cost_eur_per_year;
+  const { processed: p, outputs: o } = assessment.data;
+  if (state.mode === 'customer') return `<main id="main" class="result-main cv-main">${top}${customerView(p, o)}</main>`;
+  if (state.mode === 'developer') return `<main id="main" class="result-main rp">${top}${developerView(p, o, true)}</main>`;
+  return `<main id="main" class="result-main split">${top}<div class="split-panes">
+    <section class="pane pane-customer" aria-label="Customer view"><p class="pane-label">Customer view</p>${customerView(p, o)}</section>
+    <section class="pane pane-dev rp" aria-label="Developer view"><p class="pane-label">Developer view</p>${developerView(p, o, false)}</section></div></main>`;
+}
+// Developer view: the detailed result (decision, four steps, inputs with evidence, what-if, checks).
+function developerView(p, o, mainHeading) {
+  const d = o.decision, cost = o['03_operating_cost'].cost_eur_per_year;
   const v = verdictMeta(d, Boolean(o['02_radiator_check'].flow_temp_c.by_case));
   const fuel = labels.energy_carrier[p['03_operating_cost'].fields.energy_carrier.value] || 'current fuel';
-  return `<main id="main" class="result-main rp">${top}
-    <section class="rp-layer" aria-labelledby="page-title"><p class="rp-layer-label">Result · ${escape(d.building_id)}</p><div class="rp-top">
-      <div class="rp-card rp-verdict ${v.cls}"><p class="eyebrow">${v.eyebrow}</p><h1 id="page-title" tabindex="-1">${v.title}</h1><p>${escape(firstSentence(d.summary))}</p></div>
+  return `    <section class="rp-layer" aria-label="Result"><p class="rp-layer-label">Result · ${escape(d.building_id)}</p><div class="rp-top">
+      <div class="rp-card rp-verdict ${v.cls}"><p class="eyebrow">${v.eyebrow}</p>${mainHeading ? `<h1 id="page-title" tabindex="-1">${v.title}</h1>` : `<h2>${v.title}</h2>`}<p>${escape(firstSentence(d.summary))}</p></div>
       <div class="rp-card rp-saving"><p class="eyebrow">Energy cost saving</p><p class="rp-big">${cost.saving ? `${euros(cost.saving)}<span> / year</span>` : '—'}</p>${costBars(cost, fuel)}<p class="small">Fixed challenge prices, energy only.</p></div>
     </div></section>
     <div class="rp-link" aria-hidden="true">↑</div>
@@ -299,7 +361,94 @@ function resultPage() {
     <section class="rp-layer wi" aria-labelledby="wi-title"><p class="rp-layer-label" id="wi-title">What if · move a slider to see what would change</p><div id="wi-section">${(ensureWhatIf('result'), whatIfBody())}</div></section>
     ${d.homeowner_can_provide.length ? `<section class="next-question"><p class="eyebrow">Your next useful step</p><h2>A little more information can help.</h2><ul>${d.homeowner_can_provide.map(x => `<li>${escape(x)}</li>`).join('')}</ul><div class="next-step-actions"><button class="button primary" data-add-evidence>Add a bill or photo ${sparkle}</button><button class="back-button" data-go="4">Update my answers →</button></div><p class="small">Our AI helper can look for missing details. You’ll review them before your result changes.</p></section>` : ''}
     <details class="assumptions"><summary>What a professional needs to check</summary><ul>${d.technician_checks.map(x => `<li>${escape(x)}</li>`).join('')}</ul></details>
-    <div class="result-actions"><button class="button primary" data-go="6">Check and complete my details ${chevron}</button><button class="button secondary" data-download>Save my summary ↓</button><button class="button secondary" data-print>Print this assessment</button><button class="reset-button" data-reset>Start a new check</button></div></main>`;
+    <div class="result-actions"><button class="button primary" data-go="6">Check and complete my details ${chevron}</button><button class="button secondary" data-download>Save my summary ↓</button><button class="button secondary" data-print>Print this assessment</button><button class="reset-button" data-reset>Start a new check</button></div>`;
+}
+// Customer view: the judgement only (colour, saving, one paragraph) and a few suggestions that fit the colour.
+function customerParagraph(p, o) {
+  const h = o['01_heat_load'].heating_load_kw, flow = o['02_radiator_check'].flow_temp_c, cost = o['03_operating_cost'].cost_eur_per_year;
+  const fuel = (labels.energy_carrier[p['03_operating_cost'].fields.energy_carrier.value] || 'your current heating').toLowerCase();
+  const d = o.decision, [lo, hi] = flow.required || [];
+  const parts = [{
+    ready: 'A heat pump can very likely heat your home with the heating system you already have.',
+    workable: 'A heat pump can heat your home, but the heating water would need 55–60 °C, which costs more to run.',
+    obstacle: 'With your current radiators the heating water would need more than 60 °C, so some radiators should be upgraded first.',
+  }[d.verdict_kind] || (flow.by_case ? 'A heat pump can very likely heat your home, but we can’t yet tell whether your radiators are big enough.' : 'We need a few more details before we can judge your home.')];
+  if (h.used) parts.push(`On the coldest days your home needs about ${span(h.used, ' kW')} of heat.`);
+  if (flow.by_case?.underfloor) parts.push('Your underfloor heating runs at a low water temperature, which suits a heat pump well.');
+  else if (flow.required && d.verdict_kind !== 'obstacle') parts.push(`With your radiators the heating water would need ${lo > 60 ? 'more than 60 °C' : hi > 90 ? `${lo} °C to well over 90 °C` : span(flow.required, ' °C')}; a heat pump works most efficiently up to 55 °C.`);
+  if (cost.heat_pump) parts.push(`Running a heat pump would cost about ${euros(cost.heat_pump)} a year${cost.today !== null ? `, compared with ${money(cost.today)} for ${fuel} today` : ''}.`);
+  return parts.join(' ');
+}
+// Suggestions that fit the colour: green -> next steps (list); red -> keyword cards of what to change;
+// yellow -> two options: add the suggested file, or book a video call.
+function customerSuggestions(o) {
+  const d = o.decision, h = o['01_heat_load'].heating_load_kw;
+  const singlePipe = d.reasons.some(r => r.source === 'pipe_system' && r.type === 'obstacle');
+  if (d.verdict === 'green') return { title: 'Your next steps', items: [
+    'Ask two or three heating installers for an on-site visit and a quote.',
+    'Have the heat load of each room calculated (DIN EN 12831), so the heat pump is sized right.',
+    'Check that the meter cabinet has room for a heat-pump circuit, and find a place for the outdoor unit.'] };
+  if (d.verdict === 'red') return { title: 'What to change first', cards: [
+    ['Bigger radiators', 'Replace the smallest radiators with larger ones, or add panels, so the heating water can stay at or below 55 °C.'],
+    singlePipe ? ['Pipe check', 'Have the single-pipe heating loop checked; it may need to be converted.'] : null,
+    h.w_per_m2 && h.w_per_m2[0] > 75 ? ['Insulation', 'Better windows or roof and wall insulation lower the heat your home needs.'] : null,
+    ['Check again', 'Run this check again with the new details.']].filter(Boolean) };
+  return { title: 'Two ways to settle it', options: true };
+}
+let videoCallRequested = false;
+function yellowOptions(o) {
+  const d = o.decision, b = d.boundaries[0];
+  const files = d.homeowner_can_provide.slice(0, 3);
+  return `<div class="cv-options">
+    <article class="cv-option"><p class="cv-option-kicker">Option 1</p><h3>Add a suggested file</h3>
+      <ul>${files.map(x => `<li>${escape(x)}</li>`).join('')}</ul>
+      ${b ? `<p class="small">It turns green if your radiators together deliver at least ${escape(b.thresholds[0].range.replace('>= ', ''))} kW (rated output).</p>` : ''}
+      <button class="button primary" data-add-evidence>Add a bill or photo</button></article>
+    <article class="cv-option"><p class="cv-option-kicker">Option 2</p><h3>Book a video call</h3>
+      <p>A heating expert looks at your radiators and boiler with you in a 15-minute video call and fills in the open details.</p>
+      ${videoCallRequested ? '<p class="cv-note" role="status">✓ Request noted. This prototype does not book a real appointment.</p>' : '<button class="button secondary" data-video-call>Request a video call</button>'}</article></div>`;
+}
+// Yearly cost today against the heat pump, with the heat pump's min-max band (open options) and the saving.
+function savingChart(o, fuel) {
+  const cost = o['03_operating_cost'].cost_eur_per_year, jaz = o['03_operating_cost'].jaz, hp = cost.heat_pump, today = cost.today;
+  if (!hp) return '<p class="cv-chart-empty">The running cost is estimated once the heating water can stay at or below 60 °C.</p>';
+  const max = Math.max(today ?? 0, hp[1]), step = max > 5000 ? 2000 : max > 2000 ? 1000 : 500, top = Math.ceil(max * 1.05 / step) * step;
+  const L = 150, R = 590, x = v => L + (v / top) * (R - L), barH = 22, y1 = 26, y2 = 86;
+  const bar = (x0, x1, y, cls) => `<path class="${cls}" d="M${x0},${y}H${x1 - 4}a4,4 0 0 1 4,4V${y + barH - 4}a4,4 0 0 1 -4,4H${x0}Z"/>`;
+  const ticks = Array.from({ length: top / step + 1 }, (_, i) => i * step);
+  const k = v => (v >= 1000 ? `€${v / 1000}K` : `€${v}`);
+  const saving = cost.saving && today !== null ? cost.saving : null, axisY = saving ? 186 : 136, ys = y2 + 44;
+  return `<figure class="cv-chart"><figcaption>Heating cost per year</figcaption>
+    <svg viewBox="0 0 600 ${axisY + 12}" role="img" aria-labelledby="cv-chart-desc"><desc id="cv-chart-desc">${today !== null ? `Today ${money(today)} a year` : 'Today: no official price for this fuel'}; with a heat pump ${euros(hp)} a year${saving ? `; saving ${euros(saving)}` : ''}.</desc>
+      ${ticks.map(t => `<line class="cv-grid" x1="${x(t)}" x2="${x(t)}" y1="14" y2="${axisY - 14}"/><text class="cv-tick" x="${x(t)}" y="${axisY}">${k(t)}</text>`).join('')}
+      <text class="cv-row" x="0" y="${y1 + 16}">Today · ${escape(fuel)}</text>
+      ${today !== null ? `<g><title>Today: ${money(today)} a year</title>${bar(L, x(today), y1, 'cv-today')}</g><text class="cv-value" x="${x(today) + 6}" y="${y1 + 16}">${money(today)}</text>`
+        : `<text class="cv-value" x="${L}" y="${y1 + 16}">no official price for this fuel</text>`}
+      <text class="cv-row" x="0" y="${y2 + 16}">With a heat pump</text>
+      <g><title>Heat pump: ${euros(hp)} a year (efficiency ${span(jaz, '')})</title>
+        ${hp[1] > hp[0] ? `${bar(L, x(hp[1]), y2, 'cv-band')}<rect class="cv-hp" x="${L}" y="${y2}" width="${x(hp[0]) - L}" height="${barH}"/>` : bar(L, x(hp[0]), y2, 'cv-hp')}</g>
+      <text class="cv-value" x="${x(hp[1]) + 6}" y="${y2 + 16}">${euros(hp)}</text>
+      ${saving ? `<g class="cv-saving-mark"><title>Saving: ${euros(saving)} a year</title>
+        <line x1="${x(hp[1])}" x2="${x(today)}" y1="${ys}" y2="${ys}"/><line class="cv-saving-extra" x1="${x(hp[0])}" x2="${x(hp[1])}" y1="${ys}" y2="${ys}"/>
+        <line x1="${x(today)}" x2="${x(today)}" y1="${ys - 6}" y2="${ys + 6}"/><line x1="${x(hp[0])}" x2="${x(hp[0])}" y1="${ys - 6}" y2="${ys + 6}"/>
+        <text class="cv-value" x="${(x(hp[0]) + x(today)) / 2}" y="${ys + 22}" text-anchor="middle">You save ${euros(saving)} a year</text></g>` : ''}
+    </svg>
+    <p class="small">${hp[1] > hp[0] ? `The lighter band is the range over what is still open (heat pump efficiency ${span(jaz, '')}). ` : ''}Fixed challenge prices, energy only.</p>
+    <table class="sr-only"><caption>Heating cost per year</caption><tr><th>Today</th><td>${today !== null ? money(today) : 'not priced'}</td></tr><tr><th>With a heat pump</th><td>${euros(hp)}</td></tr>${cost.saving ? `<tr><th>Saving</th><td>${euros(saving)}</td></tr>` : ''}</table></figure>`;
+}
+function customerView(p, o) {
+  const d = o.decision, cost = o['03_operating_cost'].cost_eur_per_year, v = verdictMeta(d, Boolean(o['02_radiator_check'].flow_temp_c.by_case));
+  const fuel = labels.energy_carrier[p['03_operating_cost'].fields.energy_carrier.value] || 'current heating';
+  const s = customerSuggestions(o);
+  const body = s.options ? yellowOptions(o)
+    : s.cards ? `<div class="cv-cards">${s.cards.map(([key, text]) => `<article class="cv-card"><h3>${escape(key)}</h3><p>${escape(text)}</p></article>`).join('')}</div>`
+    : `<ul>${s.items.map(x => `<li>${escape(x)}</li>`).join('')}</ul>`;
+  return `<div class="cv"><div class="cv-verdict ${v.cls}"><p class="eyebrow">${v.eyebrow}</p><h1 id="page-title" tabindex="-1">${v.title}</h1>
+      <p class="cv-saving">${cost.saving ? `<strong>${euros(cost.saving)}</strong> saved per year` : d.verdict === 'red' ? 'Saving: estimated once the heating water can stay at or below 60 °C' : 'Saving: more information needed'}</p></div>
+    <p class="cv-text">${escape(customerParagraph(p, o))}</p>
+    ${savingChart(o, fuel)}
+    <section class="cv-suggestions ${v.cls}"><h2>${s.title}</h2>${body}</section>
+    <div class="result-actions"><button class="button ${s.options ? 'secondary' : 'primary'}" data-go="6">Check and complete my details ${chevron}</button></div></div>`;
 }
 // Confirm page: the customer approves, corrects or fills in every input the engine used.
 const CONFIRM = [
@@ -451,6 +600,7 @@ let whatIfTimer;
 function render() {
   document.documentElement.classList.toggle('larger-text', state.larger);
   document.querySelector('#text-size').setAttribute('aria-pressed', String(state.larger));
+  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
   app.innerHTML = (state.step === 0 ? welcome() : state.step === 5 ? resultPage() : state.step === 6 ? confirmPage() : state.step === 7 ? whatIfPage() : formPage()) + `<dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">Start a new home check?</h2><p>This clears the answers in this tab. Save your summary first if you want to keep it.</p><div class="dialog-actions"><button class="button secondary" data-cancel-reset autofocus>Keep my answers</button><button class="button primary" data-confirm-reset>Start a new check</button></div></dialog>`;
   document.title = `${state.step === 0 ? 'Heat pump home check' : ({ 5: 'Your first assessment', 6: 'Confirm your details', 7: 'What if' })[state.step] || steps[state.step - 1]} · nuuEnergy`;
 }
@@ -484,9 +634,11 @@ app.addEventListener('change', event => {
     whatIf = { processed: null }; save();
   }
 });
-// Every home that adds files gets its own customer folder: an example home keeps its ID (B-03), a new home gets one.
+// Intake rule (docs/data-contract.md): every case the homeowner changes is its own customer folder,
+// data/demo/C-<date>-<hex>/. An untouched example home is read from the demo dataset; once its answers change or a
+// file is added it becomes a new customer, so the demo dataset (B-*) is never written.
 function customerId() {
-  if (!/^(B-\d+|C-\d{8}-[0-9a-f]{4})$/.test(state.answers.building_id)) {
+  if (!/^C-\d{8}-[0-9a-f]{4}$/.test(state.answers.building_id)) {
     const day = new Date().toISOString().slice(0, 10).replaceAll('-', '');
     state.answers.building_id = `C-${day}-${Math.floor(Math.random() * 0x10000).toString(16).padStart(4, '0')}`;
     save();
@@ -550,7 +702,7 @@ app.addEventListener('click', async event => {
     const generation = ++uploadGeneration;
     extraction = { status: 'loading', result: null, error: '' }; render();
     try {
-      const result = await extractFiles(files);
+      const result = await extractFiles(files, { customer_id: customerId(), questionnaire: toCustomerInput(values()) });
       if (generation !== uploadGeneration) return;
       extraction = { status: 'done', result, error: '' };
     } catch (error) {
@@ -581,6 +733,7 @@ app.addEventListener('click', async event => {
   if (button.hasAttribute('data-edit')) { editSnapshot = { ...state.answers }; returnToReview = true; setStep(Number(button.dataset.edit)); }
   if (button.hasAttribute('data-sample')) loadSample(button.dataset.sample);
   if (button.hasAttribute('data-retry')) await loadSamples();
+  if (button.hasAttribute('data-video-call')) { videoCallRequested = true; render(); announce('Video call request noted. This prototype does not book a real appointment.'); }
   if (button.hasAttribute('data-retry-assess')) { assessment = { key: null, status: 'idle', data: null }; render(); }
   if (button.hasAttribute('data-approve-all')) {
     for (const [, rows] of CONFIRM) for (const [key, , type] of rows) {
@@ -603,6 +756,13 @@ app.addEventListener('click', async event => {
   if (button.hasAttribute('data-confirm-reset')) { state.answers = empty(); state.sample = false; state.sampleAnswers = null; state.evidence = {}; chosenFiles = []; uploadSave = null; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; returnToReview = false; setStep(0); announce('Your answers have been cleared.'); }
   if (button.hasAttribute('data-print')) window.print();
   if (button.hasAttribute('data-download')) downloadSummary();
+});
+// View switch: customer view, developer view, or both side by side (result page for now).
+document.querySelector('.view-switch').addEventListener('click', event => {
+  const b = event.target.closest('[data-mode]');
+  if (!b || b.dataset.mode === state.mode) return;
+  state.mode = b.dataset.mode; save(); render();
+  announce({ customer: 'Customer view.', developer: 'Developer view.', both: 'Customer and developer views side by side.' }[state.mode]);
 });
 document.querySelector('#text-size').addEventListener('click', () => {
   state.larger = !state.larger; document.documentElement.classList.toggle('larger-text', state.larger);
@@ -658,5 +818,7 @@ function openDemo() {
   if (id && samples.some(b => b.building_id === id)) { loadSample(id); setStep(5); }
 }
 addedCount = reviewedEvidence().length;
+// A ?demo= link loads its example fresh: don't assess (and save) answers left over in this tab first.
+if (new URLSearchParams(location.search).get('demo')) state.step = 0;
 render(); loadSamples().then(openDemo);
 fetch('/api/ai-status').then(r => r.json()).then(status => { aiAvailable = status.available; if (state.step === 1 && extraction.status === 'idle' && !chosenFiles.length) render(); }).catch(() => {});

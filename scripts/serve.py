@@ -7,6 +7,7 @@ usage: python3 scripts/serve.py        -> http://127.0.0.1:4173   (PORT=4174 pyt
   GET  /api/samples     demo customers' raw input (no development labels)
   GET  /api/demo/<id>   {processed, outputs} for a demo customer's hand-extracted processed/ files
   GET  /api/evaluation  internal competition evaluation, shown at /evaluation.html
+  GET  /api/customer/<id>/files, /api/customer/<id>/raw/<path>   list / open a customer's raw inputs (developer view)
   Live demo customer data/demo/B-Live (page /live.html), one saved step per upload:
   GET  /api/live         its timeline and latest step      POST /api/live/start   step 00 from B-03's input
   POST /api/live/upload  {files} -> next step              POST /api/live/reset   empty the folder
@@ -29,6 +30,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src" / "decision_engine"))
 
 import customer_steps  # noqa: E402
+import intake  # noqa: E402
 import engine  # noqa: E402
 import prepare  # noqa: E402
 import scenarios  # noqa: E402
@@ -138,9 +140,48 @@ def live_upload(body, folder=LIVE, register=REGISTER):
     return live_state(folder)
 
 
+NEW_CUSTOMER = re.compile(r"C-\d{8}-[0-9a-f]{4}")  # customers created in the browser; the demo dataset (B-*) stays read-only
+FILE_TYPES = {".pdf": "application/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+
+
 def assess(customer_input):
+    """Intake rule: a browser customer's questionnaire, processed data and decision are saved in its folder."""
+    intake.check_questionnaire(customer_input)
+    customer_id = customer_input.get("building_id")
+    if isinstance(customer_id, str) and NEW_CUSTOMER.fullmatch(customer_id):
+        return intake.run(DEMO / customer_id, customer_input)
     steps = prepare.run(customer_input)
-    return {"processed": steps, "outputs": engine.run(customer_input.get("building_id") or "HOME", steps)}
+    return {"processed": steps, "outputs": engine.run(customer_id or "HOME", steps)}
+
+
+FOLDER_ID = r"B-\d+|B-Live|C-\d{8}-[0-9a-f]{4}"
+RAW_TYPES = {**FILE_TYPES, ".json": "application/json; charset=utf-8"}
+
+
+def raw_inputs(customer_id):
+    """Everything in the customer's raw folder (questionnaire, uploads, extraction), for the developer view."""
+    raw = DEMO / customer_id / "raw"
+    return [{"path": str(p.relative_to(raw)), "name": p.name, "kind": p.suffix.lower().lstrip("."), "size": p.stat().st_size}
+            for p in sorted(raw.rglob("*")) if p.is_file() and p.suffix.lower() in RAW_TYPES]
+
+
+def customer_files(customer_id, limit=ai_extract.MAX_FILES):
+    """The customer's saved documents and photos (newest first), as an extraction payload."""
+    raw = DEMO / customer_id / "raw"
+    paths = sorted((p for sub in ("documents", "photos") for p in (raw / sub).glob("*") if p.suffix.lower() in FILE_TYPES),
+                   key=lambda p: p.stat().st_mtime, reverse=True)[:limit]
+    return [{"name": p.name, "type": FILE_TYPES[p.suffix.lower()], "data": base64.b64encode(p.read_bytes()).decode()} for p in paths]
+
+
+def extract(body):
+    """Intake rule, step 3: the questionnaire plus the customer's saved files go to the LLM; the result is saved."""
+    customer_id, questionnaire = body.get("customer_id"), body.get("questionnaire")
+    if not (isinstance(customer_id, str) and NEW_CUSTOMER.fullmatch(customer_id)):
+        return ai_extract.extract(body, questionnaire)
+    files = customer_files(customer_id) or body.get("files")
+    result = ai_extract.extract({"files": files}, questionnaire)
+    intake.save_extraction(DEMO / customer_id, {"files": [f["name"] for f in files], **result})
+    return result
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -168,6 +209,16 @@ class Handler(BaseHTTPRequestHandler):
             return self.api(lambda: {"available": ai_extract.configured()})
         if path == "/api/live":
             return self.api(live_state)
+        match = re.fullmatch(rf"/api/customer/({FOLDER_ID})/files", path)
+        if match:
+            return self.api(raw_inputs, match[1])
+        match = re.fullmatch(rf"/api/customer/({FOLDER_ID})/raw/((?:documents/|photos/)?[A-Za-z0-9._-]+)", path)
+        if match:
+            raw = DEMO / match[1] / "raw"
+            file = raw / match[2]
+            if file.is_file() and file.suffix.lower() in RAW_TYPES and file.resolve().parent in (raw.resolve(), (raw / "documents").resolve(), (raw / "photos").resolve()):
+                return self.send(200, file.read_bytes(), RAW_TYPES[file.suffix.lower()])
+            return self.send(404, b"Not found")
         match = re.fullmatch(r"/api/demo/(B-\d+|B-Live)", path)
         if match and (any((DEMO / match[1] / "processed").glob("*.json")) or (DEMO / match[1] / "steps").is_dir()):
             return self.api(demo, match[1])
@@ -215,13 +266,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(exc.status, json.dumps({"error": str(exc)}).encode(), "application/json; charset=utf-8")
         if path == '/api/extract':
             try:
-                result = ai_extract.extract(body)
+                result = extract(body)
                 return self.send(200, json.dumps(result, ensure_ascii=False).encode(), 'application/json; charset=utf-8')
             except ai_extract.ExtractionError as exc:
                 return self.send(exc.status, json.dumps({'error': str(exc)}).encode(), 'application/json; charset=utf-8')
             except Exception:
                 # Do not log document data, credentials or upstream response bodies.
                 return self.send(502, b'{"error":"AI extraction failed. Try again or enter answers manually."}', 'application/json; charset=utf-8')
+        try:
+            intake.check_questionnaire(body)
+        except intake.IntakeError as exc:
+            return self.send(400, json.dumps({"error": str(exc)}).encode(), "application/json; charset=utf-8")
         self.api(assess, body)
 
 

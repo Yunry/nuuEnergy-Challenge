@@ -36,6 +36,8 @@ Status:
   [../../docs/decision_engine_schematic.pdf](../../docs/decision_engine_schematic.pdf)
   (`python3 scripts/plot_engine_schematic.py`).
 
+`C-<yyyymmdd>-<hex>/` are customers created in the browser (git-ignored): `raw/questionnaire.json`, uploads, `raw/extraction.json`, `processed/`, `output/`, following the [data contract](../../docs/data-contract.md).
+
 `B-Live/` is the live demo customer, created step by step from http://127.0.0.1:4173/live.html and git-ignored; see [../customers/README.md](../customers/README.md).
 
 `data/raw/` stays the master copy of everything we collected and is not changed.

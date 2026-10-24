@@ -23,12 +23,14 @@ export function validateFiles(files) {
   if (files.some(f => !['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(f.type) && !(f.type === '' && /\.pdf$/i.test(f.name)))) throw new Error('Use PDF, JPG, PNG or WebP files. For a HEIC photo, export it as JPG first.');
   if (new Set(files.map(f => f.name)).size !== files.length) throw new Error('These files have the same name. Rename one so you can tell their sources apart.');
 }
-export async function extractFiles(files) {
+// context {customer_id, questionnaire}: the server sends the questionnaire and the customer's saved files to the LLM
+// and keeps the result in the customer folder (intake rule, docs/data-contract.md).
+export async function extractFiles(files, context = {}) {
   validateFiles(files);
   const payload = await Promise.all(files.map(filePayload));
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 100000);
   try {
-    const response = await fetch('/api/extract', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ files: payload }), signal: controller.signal });
+    const response = await fetch('/api/extract', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...context, files: payload }), signal: controller.signal });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'AI extraction could not be completed. Enter answers manually or try again.');
     return result;

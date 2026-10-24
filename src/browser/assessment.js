@@ -1,6 +1,8 @@
 // Browser side of the decision engine. Form answers become a customer_input object with the dataset's
 // field names; the Python engine (src/decision_engine, served by scripts/serve.py at /api/assess) prepares
 // and assesses it. Development labels never leave this function: only the keys below are sent.
+// Data contract (docs/data-contract.md): INPUT_KEYS must equal QUESTIONNAIRE_KEYS in src/decision_engine/intake.py;
+// a new question needs a key here, there, and in prepare.py. tests/test_intake.py fails otherwise.
 export const INPUT_KEYS = ['building_id', 'construction_year', 'floor_area_m2', 'renovation_status', 'heat_distribution',
   'annual_consumption_kwh', 'consumption_full_year', 'energy_carrier', 'persons_in_household', 'hot_water_via_heating',
   'flow_temperature_c', 'pipe_system', 'radiator_count', 'radiator_type', 'other_heat_source', 'solar_thermal', 'building_notes'];

@@ -22,6 +22,18 @@ Sample homes are the demo customers' raw input (`data/demo/<id>/raw/customer_inp
 
 `scripts/serve.py` answers `POST /api/assess` with the Python decision engine (`src/decision_engine`): `prepare.py` turns `customer_input` into the four processed step inputs (`{value, source, confidence, evidence}`; self-reported values have `confidence: null`, a bill that is not a full year has `low`), and `engine.py` runs heat load → radiator check → operating cost → decision. The response is `{processed, outputs}` with the same files as `data/demo/<id>/output/`. The result page is a three-layer diagram, key data only: the decision and the energy cost saving (with a today vs. heat-pump bar) on top; the four engine steps in the middle, each as one sentence and one equation with the customer's numbers; and the inputs each step used, with their evidence, at the bottom. An unchanged example home is assessed from its hand-extracted `data/demo/<id>/processed/` files (`GET /api/demo/<id>`), so its evidence is shown; `/?demo=B-03` opens that result directly for presenting. Loading, error and retry states are shown while the request runs.
 
+### View modes (header switch)
+
+Next to **Larger text** a switch picks the view: **Customer**, **Customer + Dev** (default while developing) or
+**Developer**; the choice is kept in the tab. So far it changes the result page: the customer view shows only the
+judgement (colour, yearly saving, one plain-language paragraph) and three or four suggestions that fit the colour:
+next steps when green, what to change when red, which information would settle it when yellow. The developer view
+is the detailed page (four steps with equations, inputs with evidence, what-if sliders, checks). The customer view also has a chart
+of the yearly heating cost: today's cost against the heat pump, whose lighter band is the min–max range over what
+is still open, with the saving marked between them. When yellow it offers two option cards (add a suggested file,
+or request a video call; the prototype books nothing); when red the changes appear as keyword cards. Customer + Dev
+shows both side by side (stacked on narrow screens). The review step ("Check your answers") has the same modes: its developer view shows the input space (every raw input of the customer folder as a file tile: questionnaire JSON, PDFs, photos, AI extraction), the extracted uniform data the engine will use (field, value, confidence, source, evidence), and the four decision steps with their equations computed from that data. Other pages are the same in every mode for now.
+
 ### Confirm and what-if (after the first result)
 
 **Check and complete my details** opens a confirm page listing every input the engine used, with its evidence. The customer ticks what is right, corrects what isn't and fills in open values; confirmed values become `confidence: "high"` (`source: "homeowner.confirmed"`), so their uncertainty disappears. The same what-if section (sliders and assumption log) already appears at the bottom of the first result, using the data as assessed. **Finalise my check** sends the confirmed inputs to `POST /api/scenarios` (`src/decision_engine/scenarios.py`): every input that is still uncertain gets a fixed-rule assumption (shown in the assumption log, e.g. radiator type unknown → type 22, the most common panel radiator) and a slider over its possible values. The engine runs with every uncertain input pinned to one value, so the result is a single point; each slider track is coloured by the verdict at every position (others held), and moving a slider recalculates the result live.

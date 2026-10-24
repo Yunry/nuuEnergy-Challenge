@@ -167,8 +167,13 @@ def validate_result(result, names):
     return {'fields': clean, 'warnings': [w[:1500] for w in warnings[:30]]}
 
 
-def extract(payload):
+def extract(payload, questionnaire=None):
+    """Facts from the files; the homeowner's questionnaire answers go along as context (intake rule, step 3)."""
     content, names = validate_files(payload)
+    if questionnaire:
+        content.insert(0, {'type': 'input_text', 'text': 'Homeowner questionnaire answers (self-reported context, not evidence; '
+                                                          'report disagreements with the documents in warnings): '
+                                                          + json.dumps({k: v for k, v in questionnaire.items() if k != 'extraction_evidence'})})
     if not configured():
         raise ExtractionError('AI extraction is unavailable. Add OPENAI_API_KEY to .env and restart the server, or enter answers manually.', 503)
     body = {'model': os.environ.get('OPENAI_MODEL', 'gpt-4.1-mini'), 'store': False,
