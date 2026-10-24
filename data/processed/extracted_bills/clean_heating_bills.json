@@ -27,6 +27,15 @@
     "billing_period_days": 364
   },
   {
+    "file": "muster_energieausweis_verbrauchsausweis.pdf",
+    "json_ref": "data/processed/extracted_bills/muster_energieausweis_verbrauchsausweis.json",
+    "carrier": "natural_gas",
+    "annual_consumption_kwh": 20916.0,
+    "annual_cost_eur": 2300.76,
+    "reading_type": "customer_reading",
+    "billing_period_days": 1095
+  },
+  {
     "file": "reddit_real_bill_01_gas_heating_2024.pdf",
     "json_ref": "data/processed/extracted_bills/reddit_real_bill_01_gas_heating_2024.json",
     "carrier": "natural_gas",

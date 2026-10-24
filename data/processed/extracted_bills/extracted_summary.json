@@ -99,6 +99,15 @@
     "reading_type": "estimated"
   },
   {
+    "file": "muster_energieausweis_verbrauchsausweis.pdf",
+    "json_file": "data/processed/extracted_bills/muster_energieausweis_verbrauchsausweis.json",
+    "fields_extracted": 7,
+    "carrier": "natural_gas",
+    "consumption_kwh": 20916.0,
+    "cost_eur": 2300.76,
+    "reading_type": "customer_reading"
+  },
+  {
     "file": "reddit_real_bill_01_gas_heating_2024.pdf",
     "json_file": "data/processed/extracted_bills/reddit_real_bill_01_gas_heating_2024.json",
     "fields_extracted": 5,

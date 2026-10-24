@@ -49,6 +49,15 @@ GROUND_TRUTH_SCANNED = {
         "billing_period": {"value": {"start_date": "01.01.2024", "end_date": "31.12.2024", "days": 365}, "confidence": "high", "evidence": "Jahresabrechnung 2024"},
         "current_annual_cost_eur": {"value": 985.50, "confidence": "high", "evidence": "Gesamtbetrag brutto M-Strom"},
         "meter_reading_type": {"value": "customer_reading", "confidence": "high", "evidence": "Zählerablesung Kunde"}
+    },
+    "muster_energieausweis_verbrauchsausweis.pdf": {
+        "energy_carrier": {"value": "natural_gas", "confidence": "high", "evidence": "Energieausweis: Wesentlicher Energieträger Erdgas E"},
+        "annual_consumption_kwh": {"value": 20916.0, "confidence": "high", "evidence": "Energieausweis: 3-Jahres-Mittel 20.916 kWh/a"},
+        "billing_period": {"value": {"start_date": "01.01.2021", "end_date": "31.12.2023", "days": 1095}, "confidence": "high", "evidence": "Erfassungszeitraum 3 Jahre (2021 - 2023)"},
+        "current_annual_cost_eur": {"value": 2300.76, "confidence": "high", "evidence": "Geschätzte Kosten bei 0,11 EUR/kWh (20.916 x 0,11)"},
+        "meter_reading_type": {"value": "customer_reading", "confidence": "high", "evidence": "Abrechnungsdaten Heizkostenabrechnung"},
+        "construction_year": {"value": 1982, "confidence": "high", "evidence": "Energieausweis Seite 1: Baujahr Gebäude 1982"},
+        "floor_area_m2": {"value": 165.0, "confidence": "high", "evidence": "Energieausweis Seite 1: Wohnfläche 165,0 m² (Gebäudenutzfläche 198,0 m²)"}
     }
 }
 
