@@ -3,10 +3,10 @@
   "page_count": 14,
   "fields": {
     "energy_carrier": {
-      "value": "electricity",
+      "value": "natural_gas",
       "source": "energy_bill.e_regio_strom_gas_rechnungserklaerung_2025.pdf#carrier",
       "confidence": "high",
-      "evidence": "Bill references Strom / Stromabrechnung"
+      "evidence": "Default energy carrier"
     }
   }
 }

@@ -6,7 +6,7 @@
       "value": "natural_gas",
       "source": "energy_bill.green_planet_energy_gas_musterrechnung.pdf#carrier",
       "confidence": "high",
-      "evidence": "Bill references Erdgas / Gasabrechnung"
+      "evidence": "Filename and title identify natural gas bill (green_planet_energy_gas_musterrechnung.pdf)"
     },
     "billing_period": {
       "value": {
@@ -25,22 +25,16 @@
       "evidence": "Echtes Ökogas 7.109 kWh an 376 Tagen 1.165,41 €  221,43 € 1.386,84 €"
     },
     "current_annual_cost_eur": {
-      "value": 1165.41,
+      "value": 1386.84,
       "source": "energy_bill.green_planet_energy_gas_musterrechnung.pdf#cost",
       "confidence": "high",
-      "evidence": "Gesamtbetrag 1.165,41 €      221,43 € 1.386,84 €"
+      "evidence": "Echtes Ökogas 7.109 kWh an 376 Tagen 1.165,41 €  221,43 € 1.386,84 €"
     },
     "meter_reading_type": {
       "value": "customer_reading",
       "source": "energy_bill.green_planet_energy_gas_musterrechnung.pdf#reading_type",
       "confidence": "high",
       "evidence": "Ablesung durch Kunde (Kundenablesung)"
-    },
-    "working_price_ct_per_kwh": {
-      "value": 13.972,
-      "source": "energy_bill.green_planet_energy_gas_musterrechnung.pdf#tariff",
-      "confidence": "high",
-      "evidence": "Arbeitspreis  15.06.25 - 25.06.25 33 kWh 13,9720 ct/kWh"
     }
   }
 }

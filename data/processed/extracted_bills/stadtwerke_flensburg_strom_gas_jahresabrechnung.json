@@ -3,10 +3,10 @@
   "page_count": 5,
   "fields": {
     "energy_carrier": {
-      "value": "natural_gas",
+      "value": "electricity",
       "source": "energy_bill.stadtwerke_flensburg_strom_gas_jahresabrechnung.pdf#carrier",
       "confidence": "high",
-      "evidence": "Bill references Erdgas / Gasabrechnung"
+      "evidence": "Page 1 title: Stromrechnung"
     },
     "billing_period": {
       "value": {
@@ -24,17 +24,17 @@
       "confidence": "high",
       "evidence": "Ihr Stromverbrauch 2.356 kWh"
     },
+    "current_annual_cost_eur": {
+      "value": 890.17,
+      "source": "energy_bill.stadtwerke_flensburg_strom_gas_jahresabrechnung.pdf#cost",
+      "confidence": "high",
+      "evidence": "Gesamtbetrag 01.03.2020 – 30.06.2021 890,17 Euro"
+    },
     "meter_reading_type": {
       "value": "customer_reading",
       "source": "energy_bill.stadtwerke_flensburg_strom_gas_jahresabrechnung.pdf#reading_type",
       "confidence": "high",
       "evidence": "Ablesung durch Kunde (Kundenablesung)"
-    },
-    "working_price_ct_per_kwh": {
-      "value": 25.83,
-      "source": "energy_bill.stadtwerke_flensburg_strom_gas_jahresabrechnung.pdf#tariff",
-      "confidence": "high",
-      "evidence": "Arbeitspreis 01.03.2020  – 30.06.2020 19 %  778 kWh 25,83000000 Cent/kWh"
     }
   }
 }

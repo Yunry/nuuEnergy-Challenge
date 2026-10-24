@@ -6,7 +6,7 @@
       "value": "natural_gas",
       "source": "energy_bill.stadtwerke_heidenheim_jahresabrechnung.pdf#carrier",
       "confidence": "high",
-      "evidence": "Bill references Erdgas / Gasabrechnung"
+      "evidence": "Multi-utility bill containing dedicated Gasverbrauch / Gas section"
     },
     "billing_period": {
       "value": {
@@ -29,12 +29,6 @@
       "source": "energy_bill.stadtwerke_heidenheim_jahresabrechnung.pdf#cost",
       "confidence": "high",
       "evidence": "Gesamt-Brutto 840,09€"
-    },
-    "working_price_ct_per_kwh": {
-      "value": 43.84,
-      "source": "energy_bill.stadtwerke_heidenheim_jahresabrechnung.pdf#tariff",
-      "confidence": "high",
-      "evidence": "Arbeitspreis HT 43,84 ct/kWh"
     }
   }
 }

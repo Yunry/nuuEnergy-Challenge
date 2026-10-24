@@ -1,5 +1,40 @@
 {
   "source_file": "swm_erdgas_musterrechnung_2025.pdf",
-  "page_count": 7,
-  "fields": {}
+  "page_count": 2,
+  "fields": {
+    "energy_carrier": {
+      "value": "natural_gas",
+      "source": "energy_bill.swm_erdgas_musterrechnung_2025.pdf#energy_carrier",
+      "confidence": "high",
+      "evidence": "SWM Musterrechnung Erdgas 2025"
+    },
+    "annual_consumption_kwh": {
+      "value": 14200.0,
+      "source": "energy_bill.swm_erdgas_musterrechnung_2025.pdf#annual_consumption_kwh",
+      "confidence": "high",
+      "evidence": "SWM Erdgas Abrechnung: 14.200 kWh"
+    },
+    "billing_period": {
+      "value": {
+        "start_date": "01.01.2024",
+        "end_date": "31.12.2024",
+        "days": 365
+      },
+      "source": "energy_bill.swm_erdgas_musterrechnung_2025.pdf#billing_period",
+      "confidence": "high",
+      "evidence": "Jahresabrechnung 2024"
+    },
+    "current_annual_cost_eur": {
+      "value": 1680.0,
+      "source": "energy_bill.swm_erdgas_musterrechnung_2025.pdf#current_annual_cost_eur",
+      "confidence": "high",
+      "evidence": "Gesamtbetrag brutto M-Erdgas"
+    },
+    "meter_reading_type": {
+      "value": "customer_reading",
+      "source": "energy_bill.swm_erdgas_musterrechnung_2025.pdf#meter_reading_type",
+      "confidence": "high",
+      "evidence": "Zählerablesung Kunde"
+    }
+  }
 }

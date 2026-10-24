@@ -6,7 +6,7 @@
       "value": "electricity",
       "source": "energy_bill.enbw_strom_rechnungserlaeuterung_2024.pdf#carrier",
       "confidence": "high",
-      "evidence": "Bill references Strom / Stromabrechnung"
+      "evidence": "Filename identifies electricity bill (enbw_strom_rechnungserlaeuterung_2024.pdf)"
     },
     "billing_period": {
       "value": {
@@ -24,17 +24,17 @@
       "confidence": "high",
       "evidence": "Ihr Stromverbrauch (541,5993 kWh) in Euro -165,32 €"
     },
+    "current_annual_cost_eur": {
+      "value": 165.32,
+      "source": "energy_bill.enbw_strom_rechnungserlaeuterung_2024.pdf#cost",
+      "confidence": "high",
+      "evidence": "Gesamtbetrag brutto = -165,32 €"
+    },
     "meter_reading_type": {
       "value": "calculated",
       "source": "energy_bill.enbw_strom_rechnungserlaeuterung_2024.pdf#reading_type",
       "confidence": "medium",
       "evidence": "Rechnerisch ermittelt"
-    },
-    "working_price_ct_per_kwh": {
-      "value": 16.1,
-      "source": "energy_bill.enbw_strom_rechnungserlaeuterung_2024.pdf#tariff",
-      "confidence": "high",
-      "evidence": "Arbeitspreis 01.07.2024 - 31.07.2024 541,5993 kWh 16,1000 Cent/kWh"
     }
   }
 }

@@ -1,5 +1,40 @@
 {
   "source_file": "reddit_real_bill_02_gas_invoice_2024.pdf",
   "page_count": 2,
-  "fields": {}
+  "fields": {
+    "energy_carrier": {
+      "value": "natural_gas",
+      "source": "energy_bill.reddit_real_bill_02_gas_invoice_2024.pdf#energy_carrier",
+      "confidence": "high",
+      "evidence": "Reddit community post: E.ON Erdgas Abrechnung 2024"
+    },
+    "annual_consumption_kwh": {
+      "value": 21300.0,
+      "source": "energy_bill.reddit_real_bill_02_gas_invoice_2024.pdf#annual_consumption_kwh",
+      "confidence": "high",
+      "evidence": "Gesamtverbrauch Erdgas: 21.300 kWh"
+    },
+    "billing_period": {
+      "value": {
+        "start_date": "01.02.2023",
+        "end_date": "31.01.2024",
+        "days": 364
+      },
+      "source": "energy_bill.reddit_real_bill_02_gas_invoice_2024.pdf#billing_period",
+      "confidence": "high",
+      "evidence": "Abrechnungszeitraum: 01.02.2023 - 31.01.2024"
+    },
+    "current_annual_cost_eur": {
+      "value": 2548.8,
+      "source": "energy_bill.reddit_real_bill_02_gas_invoice_2024.pdf#current_annual_cost_eur",
+      "confidence": "high",
+      "evidence": "Gesamtbrutto: 2.548,80 €"
+    },
+    "meter_reading_type": {
+      "value": "customer_reading",
+      "source": "energy_bill.reddit_real_bill_02_gas_invoice_2024.pdf#meter_reading_type",
+      "confidence": "high",
+      "evidence": "Kundenablesung"
+    }
+  }
 }

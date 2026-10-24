@@ -6,7 +6,7 @@
       "value": "natural_gas",
       "source": "energy_bill.erdgas_suedwest_jahresabrechnung.pdf#carrier",
       "confidence": "high",
-      "evidence": "Bill references Erdgas / Gasabrechnung"
+      "evidence": "Filename and title identify natural gas bill (erdgas_suedwest_jahresabrechnung.pdf)"
     }
   }
 }

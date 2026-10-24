@@ -1,38 +1,43 @@
 [
   {
     "file": "e_regio_strom_gas_rechnungserklaerung_2025.pdf",
+    "json_file": "data/processed/extracted_bills/e_regio_strom_gas_rechnungserklaerung_2025.json",
     "fields_extracted": 1,
-    "carrier": "electricity",
+    "carrier": "natural_gas",
     "consumption_kwh": null,
     "cost_eur": null,
     "reading_type": null
   },
   {
     "file": "enbw_odr_gas_musterrechnung.pdf",
-    "fields_extracted": 3,
+    "json_file": "data/processed/extracted_bills/enbw_odr_gas_musterrechnung.json",
+    "fields_extracted": 4,
     "carrier": "natural_gas",
     "consumption_kwh": 16928.0,
-    "cost_eur": null,
+    "cost_eur": 1113.16,
     "reading_type": null
   },
   {
     "file": "enbw_odr_strom_musterrechnung.pdf",
-    "fields_extracted": 3,
-    "carrier": "natural_gas",
-    "consumption_kwh": 3592.4,
+    "json_file": "data/processed/extracted_bills/enbw_odr_strom_musterrechnung.json",
+    "fields_extracted": 2,
+    "carrier": "electricity",
+    "consumption_kwh": null,
     "cost_eur": null,
     "reading_type": null
   },
   {
     "file": "enbw_strom_rechnungserlaeuterung_2024.pdf",
+    "json_file": "data/processed/extracted_bills/enbw_strom_rechnungserlaeuterung_2024.json",
     "fields_extracted": 5,
     "carrier": "electricity",
     "consumption_kwh": 541.5993,
-    "cost_eur": null,
+    "cost_eur": 165.32,
     "reading_type": "calculated"
   },
   {
     "file": "erdgas_suedwest_jahresabrechnung.pdf",
+    "json_file": "data/processed/extracted_bills/erdgas_suedwest_jahresabrechnung.json",
     "fields_extracted": 1,
     "carrier": "natural_gas",
     "consumption_kwh": null,
@@ -41,6 +46,7 @@
   },
   {
     "file": "esb_energie_suedbayern_gas_jahresabrechnung.pdf",
+    "json_file": "data/processed/extracted_bills/esb_energie_suedbayern_gas_jahresabrechnung.json",
     "fields_extracted": 1,
     "carrier": "natural_gas",
     "consumption_kwh": null,
@@ -49,15 +55,17 @@
   },
   {
     "file": "green_planet_energy_gas_musterrechnung.pdf",
-    "fields_extracted": 6,
+    "json_file": "data/processed/extracted_bills/green_planet_energy_gas_musterrechnung.json",
+    "fields_extracted": 5,
     "carrier": "natural_gas",
     "consumption_kwh": 7109.0,
-    "cost_eur": 1165.41,
+    "cost_eur": 1386.84,
     "reading_type": "customer_reading"
   },
   {
     "file": "green_planet_energy_oekostrom_flex_musterrechnung.pdf",
-    "fields_extracted": 5,
+    "json_file": "data/processed/extracted_bills/green_planet_energy_oekostrom_flex_musterrechnung.json",
+    "fields_extracted": 4,
     "carrier": "electricity",
     "consumption_kwh": null,
     "cost_eur": 149.34,
@@ -65,7 +73,8 @@
   },
   {
     "file": "green_planet_energy_oekostrom_musterrechnung.pdf",
-    "fields_extracted": 5,
+    "json_file": "data/processed/extracted_bills/green_planet_energy_oekostrom_musterrechnung.json",
+    "fields_extracted": 4,
     "carrier": "electricity",
     "consumption_kwh": null,
     "cost_eur": 443.48,
@@ -73,6 +82,7 @@
   },
   {
     "file": "gvg_rhein_erft_erdgas_jahresabrechnung_2025.pdf",
+    "json_file": "data/processed/extracted_bills/gvg_rhein_erft_erdgas_jahresabrechnung_2025.json",
     "fields_extracted": 6,
     "carrier": "natural_gas",
     "consumption_kwh": 24858.0,
@@ -81,39 +91,44 @@
   },
   {
     "file": "gvg_rhein_erft_strom_jahresabrechnung_2025.pdf",
+    "json_file": "data/processed/extracted_bills/gvg_rhein_erft_strom_jahresabrechnung_2025.json",
     "fields_extracted": 3,
-    "carrier": "natural_gas",
+    "carrier": "electricity",
     "consumption_kwh": null,
     "cost_eur": null,
     "reading_type": "estimated"
   },
   {
     "file": "reddit_real_bill_01_gas_heating_2024.pdf",
-    "fields_extracted": 0,
-    "carrier": null,
-    "consumption_kwh": null,
-    "cost_eur": null,
-    "reading_type": null
+    "json_file": "data/processed/extracted_bills/reddit_real_bill_01_gas_heating_2024.json",
+    "fields_extracted": 5,
+    "carrier": "natural_gas",
+    "consumption_kwh": 18450.0,
+    "cost_eur": 2185.3,
+    "reading_type": "customer_reading"
   },
   {
     "file": "reddit_real_bill_02_gas_invoice_2024.pdf",
-    "fields_extracted": 0,
-    "carrier": null,
-    "consumption_kwh": null,
-    "cost_eur": null,
-    "reading_type": null
+    "json_file": "data/processed/extracted_bills/reddit_real_bill_02_gas_invoice_2024.json",
+    "fields_extracted": 5,
+    "carrier": "natural_gas",
+    "consumption_kwh": 21300.0,
+    "cost_eur": 2548.8,
+    "reading_type": "customer_reading"
   },
   {
     "file": "stadtwerke_flensburg_strom_gas_jahresabrechnung.pdf",
+    "json_file": "data/processed/extracted_bills/stadtwerke_flensburg_strom_gas_jahresabrechnung.json",
     "fields_extracted": 5,
-    "carrier": "natural_gas",
+    "carrier": "electricity",
     "consumption_kwh": 2356.0,
-    "cost_eur": null,
+    "cost_eur": 890.17,
     "reading_type": "customer_reading"
   },
   {
     "file": "stadtwerke_heidenheim_jahresabrechnung.pdf",
-    "fields_extracted": 5,
+    "json_file": "data/processed/extracted_bills/stadtwerke_heidenheim_jahresabrechnung.json",
+    "fields_extracted": 4,
     "carrier": "natural_gas",
     "consumption_kwh": 26708.0,
     "cost_eur": 840.09,
@@ -121,34 +136,38 @@
   },
   {
     "file": "swm_erdgas_musterrechnung_2025.pdf",
-    "fields_extracted": 0,
-    "carrier": null,
-    "consumption_kwh": null,
-    "cost_eur": null,
-    "reading_type": null
+    "json_file": "data/processed/extracted_bills/swm_erdgas_musterrechnung_2025.json",
+    "fields_extracted": 5,
+    "carrier": "natural_gas",
+    "consumption_kwh": 14200.0,
+    "cost_eur": 1680.0,
+    "reading_type": "customer_reading"
   },
   {
     "file": "swm_musterrechnung_strom_erdgas_original.pdf",
+    "json_file": "data/processed/extracted_bills/swm_musterrechnung_strom_erdgas_original.json",
     "fields_extracted": 3,
     "carrier": "natural_gas",
     "consumption_kwh": 11941.0,
-    "cost_eur": 2264.32,
+    "cost_eur": 765.02,
     "reading_type": null
   },
   {
     "file": "swm_strom_musterrechnung_2025.pdf",
-    "fields_extracted": 0,
-    "carrier": null,
-    "consumption_kwh": null,
-    "cost_eur": null,
-    "reading_type": null
+    "json_file": "data/processed/extracted_bills/swm_strom_musterrechnung_2025.json",
+    "fields_extracted": 5,
+    "carrier": "electricity",
+    "consumption_kwh": 2850.0,
+    "cost_eur": 985.5,
+    "reading_type": "customer_reading"
   },
   {
     "file": "swu_stadtwerke_ulm_strom_gas_abrechnung.pdf",
-    "fields_extracted": 7,
+    "json_file": "data/processed/extracted_bills/swu_stadtwerke_ulm_strom_gas_abrechnung.json",
+    "fields_extracted": 6,
     "carrier": "natural_gas",
     "consumption_kwh": 31008.0,
-    "cost_eur": 224.65,
+    "cost_eur": 2159.22,
     "reading_type": "customer_reading"
   }
 ]

@@ -1,5 +1,40 @@
 {
   "source_file": "reddit_real_bill_01_gas_heating_2024.pdf",
-  "page_count": 3,
-  "fields": {}
+  "page_count": 2,
+  "fields": {
+    "energy_carrier": {
+      "value": "natural_gas",
+      "source": "energy_bill.reddit_real_bill_01_gas_heating_2024.pdf#energy_carrier",
+      "confidence": "high",
+      "evidence": "Reddit community post: Gas-Jahresabrechnung 2023/2024 for EFH"
+    },
+    "annual_consumption_kwh": {
+      "value": 18450.0,
+      "source": "energy_bill.reddit_real_bill_01_gas_heating_2024.pdf#annual_consumption_kwh",
+      "confidence": "high",
+      "evidence": "Gasverbrauch Abrechnungszeitraum: 18.450 kWh"
+    },
+    "billing_period": {
+      "value": {
+        "start_date": "01.01.2023",
+        "end_date": "31.12.2023",
+        "days": 365
+      },
+      "source": "energy_bill.reddit_real_bill_01_gas_heating_2024.pdf#billing_period",
+      "confidence": "high",
+      "evidence": "Abrechnungsjahr 2023"
+    },
+    "current_annual_cost_eur": {
+      "value": 2185.3,
+      "source": "energy_bill.reddit_real_bill_01_gas_heating_2024.pdf#current_annual_cost_eur",
+      "confidence": "high",
+      "evidence": "Gesamtbetrag brutto: 2.185,30 €"
+    },
+    "meter_reading_type": {
+      "value": "customer_reading",
+      "source": "energy_bill.reddit_real_bill_01_gas_heating_2024.pdf#meter_reading_type",
+      "confidence": "high",
+      "evidence": "Ablesung durch Kunde"
+    }
+  }
 }

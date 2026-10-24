@@ -6,7 +6,7 @@
       "value": "natural_gas",
       "source": "energy_bill.swu_stadtwerke_ulm_strom_gas_abrechnung.pdf#carrier",
       "confidence": "high",
-      "evidence": "Bill references Erdgas / Gasabrechnung"
+      "evidence": "Multi-utility bill containing dedicated Gasverbrauch / Gas section"
     },
     "billing_period": {
       "value": {
@@ -25,10 +25,10 @@
       "evidence": "Gas 31.008 kWh (357 Tage) 33.528 kWh (363 Tage) 2.159,22 EUR"
     },
     "current_annual_cost_eur": {
-      "value": 224.65,
+      "value": 2159.22,
       "source": "energy_bill.swu_stadtwerke_ulm_strom_gas_abrechnung.pdf#cost",
       "confidence": "high",
-      "evidence": "Rechnungsbetrag 224,65 EUR"
+      "evidence": "Gas 31.008 kWh (357 Tage) 33.528 kWh (363 Tage) 2.159,22 EUR"
     },
     "meter_reading_type": {
       "value": "customer_reading",
@@ -36,17 +36,11 @@
       "confidence": "high",
       "evidence": "Ablesung durch Kunde (Kundenablesung)"
     },
-    "working_price_ct_per_kwh": {
-      "value": 0.19782,
-      "source": "energy_bill.swu_stadtwerke_ulm_strom_gas_abrechnung.pdf#tariff",
+    "zustandszahl_z": {
+      "value": 0.9112,
+      "source": "energy_bill.swu_stadtwerke_ulm_strom_gas_abrechnung.pdf#conversion",
       "confidence": "high",
-      "evidence": "Arbeitspreis 1.300 kWh 0,19782 EUR"
-    },
-    "base_price_eur_per_year": {
-      "value": 89.66,
-      "source": "energy_bill.swu_stadtwerke_ulm_strom_gas_abrechnung.pdf#tariff",
-      "confidence": "high",
-      "evidence": "Grundpreis 363 Tage 89,66 EUR /"
+      "evidence": "0,9112 x"
     }
   }
 }

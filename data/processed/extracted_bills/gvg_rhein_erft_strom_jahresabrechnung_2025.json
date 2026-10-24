@@ -3,10 +3,10 @@
   "page_count": 3,
   "fields": {
     "energy_carrier": {
-      "value": "natural_gas",
+      "value": "electricity",
       "source": "energy_bill.gvg_rhein_erft_strom_jahresabrechnung_2025.pdf#carrier",
       "confidence": "high",
-      "evidence": "Bill references Erdgas / Gasabrechnung"
+      "evidence": "Filename identifies electricity bill (gvg_rhein_erft_strom_jahresabrechnung_2025.pdf)"
     },
     "billing_period": {
       "value": {

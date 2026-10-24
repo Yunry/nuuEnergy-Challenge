@@ -6,7 +6,7 @@
       "value": "natural_gas",
       "source": "energy_bill.enbw_odr_gas_musterrechnung.pdf#carrier",
       "confidence": "high",
-      "evidence": "Bill references Erdgas / Gasabrechnung"
+      "evidence": "Filename and title identify natural gas bill (enbw_odr_gas_musterrechnung.pdf)"
     },
     "billing_period": {
       "value": {
@@ -23,6 +23,12 @@
       "source": "energy_bill.enbw_odr_gas_musterrechnung.pdf#consumption",
       "confidence": "high",
       "evidence": "Gas (Vertrag 2211215) 01.01.2017 - 31.12.2017 (365 Tage) 16.928 kWh 01.01.2016 - 31.12.2016 (366 Tage) 17.328 kWh"
+    },
+    "current_annual_cost_eur": {
+      "value": 1113.16,
+      "source": "energy_bill.enbw_odr_gas_musterrechnung.pdf#cost",
+      "confidence": "high",
+      "evidence": "Für Ihren Gasverbrauch berechnen wir: 935,43 € 177,73 € 19 1.113,16 €"
     }
   }
 }

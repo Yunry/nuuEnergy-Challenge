@@ -6,7 +6,7 @@
       "value": "electricity",
       "source": "energy_bill.green_planet_energy_oekostrom_flex_musterrechnung.pdf#carrier",
       "confidence": "high",
-      "evidence": "Bill references Strom / Stromabrechnung"
+      "evidence": "Filename identifies electricity bill (green_planet_energy_oekostrom_flex_musterrechnung.pdf)"
     },
     "billing_period": {
       "value": {
@@ -29,12 +29,6 @@
       "source": "energy_bill.green_planet_energy_oekostrom_flex_musterrechnung.pdf#reading_type",
       "confidence": "medium",
       "evidence": "Rechnerische Schätzung / maschinell ermittelt"
-    },
-    "working_price_ct_per_kwh": {
-      "value": 30.2353,
-      "source": "energy_bill.green_planet_energy_oekostrom_flex_musterrechnung.pdf#tariff",
-      "confidence": "high",
-      "evidence": "Arbeitspreis 01.02.25 - 28.02.25 434 kWh 30,2353 ct/kWh"
     }
   }
 }

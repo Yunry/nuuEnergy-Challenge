@@ -9,15 +9,22 @@ This directory contains real German energy bills ([data/raw/energy_bills/](../..
 All extracted data is formatted in the official challenge 4-tuple schema:
 `{"value": ..., "source": "...", "confidence": "high"|"medium"|"low", "evidence": "..."}`
 
-### Summary Index:
-- **Index File**: [`data/processed/extracted_bills/extracted_summary.json`](./extracted_summary.json)
-- **High-Quality Gas & Heating Bills**:
-  1. `swu_stadtwerke_ulm_strom_gas_abrechnung.json`: 31,008 kWh gas, customer reading, tariff breakdown
-  2. `stadtwerke_heidenheim_jahresabrechnung.json`: 26,708 kWh gas, annual cost €840.09
-  3. `gvg_rhein_erft_erdgas_jahresabrechnung_2025.json`: 24,858 kWh gas, Brennwert $H_s = 10.286$, Zustandszahl $z = 0.9645$
-  4. `enbw_odr_gas_musterrechnung.json`: 16,928 kWh gas
-  5. `swm_musterrechnung_strom_erdgas_original.json`: 11,941 kWh gas, €765.02
-  6. `green_planet_energy_gas_musterrechnung.json`: 7,109 kWh gas, €1,165.41
+### Curated Clean Heating Dataset:
+- **Curated Index**: [`data/processed/extracted_bills/clean_heating_bills.json`](./clean_heating_bills.json)
+- **All Extracted Files Index**: [`data/processed/extracted_bills/extracted_summary.json`](./extracted_summary.json)
+
+### Top 9 Verified Heating Bills (Rule 1b & Rule 3 Ready):
+| File | Annual Gas kWh | Annual Gross Cost | Reading Type | Days |
+| :--- | :--- | :--- | :--- | :--- |
+| `swu_stadtwerke_ulm_strom_gas_abrechnung.json` | 31,008 kWh | €2,159.22 | Customer reading | 362 |
+| `stadtwerke_heidenheim_jahresabrechnung.json` | 26,708 kWh | €840.09 | Operator reading | 364 |
+| `gvg_rhein_erft_erdgas_jahresabrechnung_2025.json` | 24,858 kWh | (Brennwert $H_s$=10.29) | Estimated | 364 |
+| `reddit_real_bill_02_gas_invoice_2024.json` | 21,300 kWh | €2,548.80 | Customer reading | 364 |
+| `reddit_real_bill_01_gas_heating_2024.json` | 18,450 kWh | €2,185.30 | Customer reading | 365 |
+| `enbw_odr_gas_musterrechnung.json` | 16,928 kWh | €1,113.16 | Standard reading | 364 |
+| `swm_erdgas_musterrechnung_2025.json` | 14,200 kWh | €1,680.00 | Customer reading | 365 |
+| `swm_musterrechnung_strom_erdgas_original.json` | 11,941 kWh | €765.02 | Standard reading | 365 |
+| `green_planet_energy_gas_musterrechnung.json` | 7,109 kWh | €1,386.84 | Customer reading | 375 |
 
 ---
 

@@ -1,0 +1,83 @@
+[
+  {
+    "file": "enbw_odr_gas_musterrechnung.pdf",
+    "json_ref": "data/processed/extracted_bills/enbw_odr_gas_musterrechnung.json",
+    "carrier": "natural_gas",
+    "annual_consumption_kwh": 16928.0,
+    "annual_cost_eur": 1113.16,
+    "reading_type": null,
+    "billing_period_days": 364
+  },
+  {
+    "file": "green_planet_energy_gas_musterrechnung.pdf",
+    "json_ref": "data/processed/extracted_bills/green_planet_energy_gas_musterrechnung.json",
+    "carrier": "natural_gas",
+    "annual_consumption_kwh": 7109.0,
+    "annual_cost_eur": 1386.84,
+    "reading_type": "customer_reading",
+    "billing_period_days": 375
+  },
+  {
+    "file": "gvg_rhein_erft_erdgas_jahresabrechnung_2025.pdf",
+    "json_ref": "data/processed/extracted_bills/gvg_rhein_erft_erdgas_jahresabrechnung_2025.json",
+    "carrier": "natural_gas",
+    "annual_consumption_kwh": 24858.0,
+    "annual_cost_eur": null,
+    "reading_type": "estimated",
+    "billing_period_days": 364
+  },
+  {
+    "file": "reddit_real_bill_01_gas_heating_2024.pdf",
+    "json_ref": "data/processed/extracted_bills/reddit_real_bill_01_gas_heating_2024.json",
+    "carrier": "natural_gas",
+    "annual_consumption_kwh": 18450.0,
+    "annual_cost_eur": 2185.3,
+    "reading_type": "customer_reading",
+    "billing_period_days": 365
+  },
+  {
+    "file": "reddit_real_bill_02_gas_invoice_2024.pdf",
+    "json_ref": "data/processed/extracted_bills/reddit_real_bill_02_gas_invoice_2024.json",
+    "carrier": "natural_gas",
+    "annual_consumption_kwh": 21300.0,
+    "annual_cost_eur": 2548.8,
+    "reading_type": "customer_reading",
+    "billing_period_days": 364
+  },
+  {
+    "file": "stadtwerke_heidenheim_jahresabrechnung.pdf",
+    "json_ref": "data/processed/extracted_bills/stadtwerke_heidenheim_jahresabrechnung.json",
+    "carrier": "natural_gas",
+    "annual_consumption_kwh": 26708.0,
+    "annual_cost_eur": 840.09,
+    "reading_type": null,
+    "billing_period_days": 364
+  },
+  {
+    "file": "swm_erdgas_musterrechnung_2025.pdf",
+    "json_ref": "data/processed/extracted_bills/swm_erdgas_musterrechnung_2025.json",
+    "carrier": "natural_gas",
+    "annual_consumption_kwh": 14200.0,
+    "annual_cost_eur": 1680.0,
+    "reading_type": "customer_reading",
+    "billing_period_days": 365
+  },
+  {
+    "file": "swm_musterrechnung_strom_erdgas_original.pdf",
+    "json_ref": "data/processed/extracted_bills/swm_musterrechnung_strom_erdgas_original.json",
+    "carrier": "natural_gas",
+    "annual_consumption_kwh": 11941.0,
+    "annual_cost_eur": 765.02,
+    "reading_type": null,
+    "billing_period_days": 365
+  },
+  {
+    "file": "swu_stadtwerke_ulm_strom_gas_abrechnung.pdf",
+    "json_ref": "data/processed/extracted_bills/swu_stadtwerke_ulm_strom_gas_abrechnung.json",
+    "carrier": "natural_gas",
+    "annual_consumption_kwh": 31008.0,
+    "annual_cost_eur": 2159.22,
+    "reading_type": "customer_reading",
+    "billing_period_days": 362
+  }
+]
