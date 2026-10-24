@@ -1,4 +1,4 @@
-import { assess, toCustomerInput } from './assessment.js';
+import { assess, demo, toCustomerInput } from './assessment.js';
 import { extractFiles, applyFields, fieldLabels, validateFiles } from './extraction.js';
 
 const app = document.querySelector('#app');
@@ -165,10 +165,12 @@ function formPage() {
   return `<main id="main" class="flow-main">${progress()}<div class="flow-layout"><section class="form-panel"><p class="eyebrow">Step ${state.step} of 4</p><h1 id="page-title" tabindex="-1">${titles[state.step - 1]}</h1><p class="intro">${intros[state.step - 1]}</p>${errorSummary()}${state.step > 1 ? helperPrompt() : ''}<form id="home-form" novalidate>${content}<div class="form-actions"><button type="button" class="back-button" data-go="${returnToReview ? 4 : state.step - 1}"><span aria-hidden="true">←</span> ${returnToReview ? 'Cancel changes' : 'Back'}</button><button type="submit" class="button primary">${state.step === 4 ? 'See my assessment' : returnToReview ? 'Save changes' : state.step === 1 ? 'Continue to my heating' : 'Continue'} ${chevron}</button></div></form></section><aside class="flow-aside"><div class="encouragement"><span class="aside-kicker">A little reassurance</span><h2>You don’t need to be an expert.</h2><p>“I’m not sure” is a useful answer, too. We’ll tell you which details a heating professional can help with.</p><hr><p class="small">Your answers stay in this tab. You can go back without losing them.</p></div><p class="prototype-note">This is an initial indication, not a final design or an installation quote.</p></aside></div></main>`;
 }
 let assessment = { key: null, status: 'idle', data: null };
+// An unchanged example home is assessed from its hand-extracted files (with real evidence); anything else from the form.
+const sampleUnchanged = () => state.sample && state.sampleAnswers === JSON.stringify(state.answers);
 async function runAssessment(key, input) {
   assessment = { key, status: 'loading', data: null };
   try {
-    const data = await assess(input);
+    const data = await (key.startsWith('demo:') ? demo(key.slice(5)) : assess(input));
     if (assessment.key === key) assessment = { key, status: 'done', data };
   } catch { if (assessment.key === key) assessment = { key, status: 'error', data: null }; }
   if (state.step === 5 && assessment.key === key) {
@@ -177,35 +179,117 @@ async function runAssessment(key, input) {
   }
 }
 function verdictMeta(d, hasCases) {
-  if (d.verdict === 'green') return { cls: 'green', symbol: tick, eyebrow: 'Green · Likely suitable', title: 'A promising starting point.' };
-  if (d.verdict === 'red') return { cls: 'red', symbol: '!', eyebrow: 'Red · Changes needed first', title: 'Some changes are needed first.' };
-  if (d.verdict_kind === 'workable') return { cls: 'yellow', symbol: '~', eyebrow: 'Yellow · Works at a higher water temperature', title: 'Possible, with higher running costs.' };
-  return { cls: 'yellow', symbol: '?', eyebrow: 'Yellow · More checks needed', title: hasCases ? 'Possible, with a few checks.' : 'Let’s fill in a few gaps.' };
+  if (d.verdict === 'green') return { cls: 'green', eyebrow: 'Green · Likely suitable', title: 'A promising starting point.' };
+  if (d.verdict === 'red') return { cls: 'red', eyebrow: 'Red · Changes needed first', title: 'Some changes are needed first.' };
+  if (d.verdict_kind === 'workable') return { cls: 'yellow', eyebrow: 'Yellow · Works at a higher water temperature', title: 'Possible, with higher running costs.' };
+  return { cls: 'yellow', eyebrow: 'Yellow · More checks needed', title: hasCases ? 'Possible, with a few checks.' : 'Let’s fill in a few gaps.' };
 }
-const markers = { positive: '✓', obstacle: '!', unknown: '?', action: '→', hint: 'i' };
-const caseNames = { 33: 'Three-panel radiators (type 33)', 22: 'Two-panel radiators (type 22)', 11: 'One-panel radiators (type 11)', underfloor: 'Underfloor heating' };
+
+// Result page: three layers. Top: decision and saving. Middle: the four engine steps, one sentence and one
+// equation each. Bottom: the inputs each step used, with their evidence.
+const span = (r, unit = '') => (!r ? '—' : (r[0] === r[1] ? formatNumber(r[0]) : `${formatNumber(r[0])}–${formatNumber(r[1])}`) + unit);
+const euros = r => (!r ? '—' : r[0] === r[1] ? money(r[0]) : `${money(r[0])}–${money(r[1])}`);
+const firstSentence = text => text.split(/(?<=\.)\s/)[0];
+
+function stepCards(p, o) {
+  const load = o['01_heat_load'], h = load.heating_load_kw, f1 = p['01b_heat_load_by_consumption'].fields;
+  const flow = o['02_radiator_check'].flow_temp_c, cases = flow.by_case, f2 = p['02_radiator_check'].fields;
+  const c = o['03_operating_cost'], cost = c.cost_eur_per_year, d = o.decision;
+
+  let eq1 = '—';
+  if (h.by_consumption) {
+    const n = f1.persons_in_household.value, hw = f1.hot_water_via_heating.value;
+    const water = hw === false ? '' : hw === true && f1.solar_thermal.value !== true && n ? ` − ${n} × 1,000 kWh` : ` − 0…${n || 5} × 1,000 kWh`;
+    eq1 = `P = (${formatNumber(f1.annual_consumption_kwh.value)} kWh × 0.88${water}) / ${span(load.inputs_as_ranges.full_load_hours)} h = ${span(h.by_consumption, ' kW')}`;
+  } else if (h.by_area) {
+    const a = load.inputs_as_ranges.heated_area_m2;
+    eq1 = `P = ${span(a)} m² × ${span([Math.round(h.by_area[0] * 1000 / a[0]), Math.round(h.by_area[1] * 1000 / a[1])])} W/m² = ${span(h.by_area, ' kW')}`;
+  }
+  const s1 = !h.used ? 'Not enough data yet to estimate the heat load.'
+    : h.consistent === false ? `Bill (${span(h.by_consumption, ' kW')}) and house size (${span(h.by_area, ' kW')}) disagree, so both are kept.`
+    : h.consistent ? `Bill and house size agree: the house needs about ${span(h.used, ' kW')} on the coldest day.`
+    : `The house needs about ${span(h.used, ' kW')} on the coldest day.`;
+
+  let s2 = 'Not enough data yet: the heating type or number of radiators is missing.', eq2 = '—';
+  if (cases?.underfloor) { s2 = 'Underfloor heating works at a low water temperature.'; eq2 = 'T_flow ≈ 35 °C'; }
+  else if (cases) {
+    const types = Object.keys(cases).sort().reverse(), best = types[0];
+    const rating = p['02_radiator_check'].reference_data.radiator_rated_kw_each.value[best];
+    s2 = types.length > 1 ? `Radiator type unknown: the water would need ${types.map(t => `${span(cases[t])} °C (type ${t})`).join(', ')}.` : `Type ${best} radiators need ${span(cases[best])} °C water.`;
+    eq2 = `T = 25 + 50 × (${formatNumber(h.used[1])} kW / (${f2.radiator_count.value} × ${rating} kW))^(1/1.3) = ${cases[best][1]} °C`;
+  }
+
+  let s3 = 'Running costs need a full-year bill and a usable water temperature.', eq3 = '—';
+  if (cost.heat_pump) {
+    s3 = `A heat pump would cost ${euros(cost.heat_pump)} a year${cost.today !== null ? ` instead of ${money(cost.today)} today` : ''}.`;
+    eq3 = `${formatNumber(p['03_operating_cost'].fields.annual_consumption_kwh.value)} kWh × 0.88 / JAZ ${span(c.jaz)} × €0.26 = ${euros(cost.heat_pump)}`;
+  }
+
+  const b = d.boundaries[0];
+  const s4 = { ready: 'Every case stays at or below 55 °C, so the existing heating works efficiently.', workable: 'Every case needs 55–60 °C: it works, with higher running costs.', obstacle: 'Every case needs more than 60 °C: some radiators should be upgraded first.' }[d.verdict_kind]
+    || (cases ? 'Some cases stay at or below 55 °C and others need more, so the radiator output decides.' : 'Key inputs are missing, so the result stays open.');
+  const eq4 = b ? `Q_needed = ${formatNumber(h.used[1])} kW / ((55 − 25) / 50)^1.3 = ${b.thresholds[0].range.replace('>= ', '')} kW (${b.thresholds[0].per_radiator.replace('>= ', '')} kW per radiator)`
+    : '≤ 55 °C green · 55–60 °C yellow · > 60 °C red';
+
+  return [
+    { title: 'Heat load', sentence: s1, equation: eq1, result: span(h.used, ' kW') },
+    { title: 'Radiator check', sentence: s2, equation: eq2, result: span(flow.required, ' °C') },
+    { title: 'Operating cost', sentence: s3, equation: eq3, result: cost.saving ? `${euros(cost.saving)} / year saved` : '—' },
+    { title: 'Decision', sentence: s4, equation: eq4, result: `${d.verdict} · ${d.verdict_kind}` },
+  ];
+}
+
+const yesNo = v => (v ? 'yes' : 'no');
+const INPUTS = [ // [processed step, field, from reference_data, label, format], one column per engine step
+  [['01a_heat_load_by_area', 'floor_area_m2', false, 'Floor area', v => `${formatNumber(v)} m²`], ['01a_heat_load_by_area', 'construction_year', false, 'Built', String],
+    ['01a_heat_load_by_area', 'renovation_status', false, 'Renovation', String], ['01a_heat_load_by_area', 'unheated_area', false, 'Unheated area', String],
+    ['01b_heat_load_by_consumption', 'annual_consumption_kwh', false, 'Energy used', v => `${formatNumber(v)} kWh/year`], ['01b_heat_load_by_consumption', 'energy_carrier', false, 'Fuel', v => labels.energy_carrier[v] || v],
+    ['01b_heat_load_by_consumption', 'persons_in_household', false, 'People', String], ['01b_heat_load_by_consumption', 'hot_water_via_heating', false, 'Hot water from boiler', yesNo]],
+  [['02_radiator_check', 'heat_distribution', false, 'Heating', v => labels.heat_distribution[v] || v], ['02_radiator_check', 'radiator_count', false, 'Radiators', String],
+    ['02_radiator_check', 'radiator_type', false, 'Radiator type', v => `type ${v}`, '11, 22 and 33 all tried'], ['02_radiator_check', 'radiator_size_mm', false, 'Radiator size', v => v.join(' × ') + ' mm', '600 × 1000 mm assumed']],
+  [['03_operating_cost', 'fuel_price_eur_per_kwh', true, 'Fuel price', v => `€${v}/kWh`, 'today’s cost not computed'], ['03_operating_cost', 'hp_electricity_price_eur_per_kwh', true, 'Heat-pump electricity', v => `€${v}/kWh`]],
+  [['02_radiator_check', 'pipe_system', false, 'Pipes', v => labels.pipe_system[v] || v], ['02_radiator_check', 'valves_to_replace', false, 'Valves to replace', String]],
+];
+function inputItem(p, [step, key, isRef, label, format, fallback]) {
+  const f = (isRef ? p[step].reference_data : p[step].fields)[key];
+  if (!f || (f.value === null && ['not asked', 'not provided'].includes(f.evidence))) return '';
+  const value = f.value === null ? 'unknown' : format(f.value);
+  const note = f.value === null && fallback ? `<p class="rp-note">→ ${fallback}</p>` : '';
+  const evidence = f.evidence && f.evidence !== String(f.value) && f.evidence !== 'self-reported' ? `<p class="rp-evidence">“${escape(f.evidence)}”</p>` : '';
+  const source = String(f.source).replace('customer_input.', '').replace('homeowner.', 'your answer: ');
+  return `<li><div class="rp-in"><span>${label}</span><strong>${escape(value)}</strong></div>${note}${evidence}<p class="rp-source">${escape(source)} · ${escape(f.confidence ?? (f.value === null ? 'no value' : 'as given'))}</p></li>`;
+}
+
+function costBars(cost, fuel) {
+  const max = Math.max(cost.today ?? 0, cost.heat_pump?.[1] ?? 0);
+  if (!max || !cost.heat_pump) return '';
+  const w = v => `${(v / max * 100).toFixed(1)}%`, [lo, hi] = cost.heat_pump;
+  return `<div class="rp-bars" aria-hidden="true">${cost.today !== null ? `<div class="rp-bar"><span>Today · ${escape(fuel)}</span><div class="rp-track"><div class="rp-fill today" style="width:${w(cost.today)}"></div></div><strong>${money(cost.today)}</strong></div>` : ''}`
+    + `<div class="rp-bar"><span>Heat pump</span><div class="rp-track"><div class="rp-fill hp" style="width:${w(lo)}"></div><div class="rp-fill hp-range" style="left:${w(lo)};width:${w(hi - lo)}"></div></div><strong>${euros(cost.heat_pump)}</strong></div></div>`;
+}
+
 function resultPage() {
-  const input = { ...toCustomerInput(values()), extraction_evidence: Object.fromEntries(reviewedEvidence()) }, key = JSON.stringify(input);
+  const input = { ...toCustomerInput(values()), extraction_evidence: Object.fromEntries(reviewedEvidence()) }, key = sampleUnchanged() ? `demo:${state.answers.building_id}` : JSON.stringify(input);
   if (assessment.key !== key) runAssessment(key, input);
   const top = '<div class="result-topline"><button class="back-button" data-go="4">← Review my answers</button><span>YOUR FIRST ASSESSMENT</span></div>';
   if (assessment.status === 'loading') return `<main id="main" class="result-main">${top}<section class="verdict-panel" aria-busy="true"><div><h1 id="page-title" tabindex="-1">Checking your answers…</h1><p class="lead">This usually takes a moment.</p></div></section></main>`;
   if (assessment.status === 'error') return `<main id="main" class="result-main">${top}<section class="verdict-panel yellow"><div><h1 id="page-title" tabindex="-1">We couldn’t complete the check.</h1><p class="lead">The calculation did not respond. Your answers are still saved in this tab.</p><div class="result-actions"><button class="button primary" data-retry-assess>Try again</button></div></div></section></main>`;
-  const { decision: d, '01_heat_load': h, '02_radiator_check': r, '03_operating_cost': c } = assessment.data.outputs;
-  const load = h.heating_load_kw, cases = r.flow_temp_c.by_case, cost = c.cost_eur_per_year, v = verdictMeta(d, Boolean(cases));
-  const temps = ([lo, hi]) => (lo === hi ? `${lo} °C` : `${lo}–${hi} °C`);
-  const boundaries = d.boundaries.map(b => `<div class="boundary"><h3>What would settle it</h3><p>The combined rated output of your radiators decides the result:</p><ul>${b.thresholds.map(t => `<li><strong>${escape(t.range)} kW</strong> in total (${escape(t.per_radiator)} kW per radiator): ${escape(t.result)}</li>`).join('')}</ul><p class="small">${escape(b.how)}.</p></div>`).join('');
-  return `<main id="main" class="result-main">${top}<section class="verdict-panel ${v.cls}"><div class="verdict-symbol" aria-hidden="true">${v.symbol}</div><div><p class="eyebrow">${v.eyebrow}</p><h1 id="page-title" tabindex="-1">${v.title}</h1><p class="lead">${escape(d.summary)}</p></div></section>`
-    + '<p class="result-context">This prototype gives a rough first indication. Your heating professional will confirm whether it works for your home.</p><div class="result-layout"><div>'
-    + `<section class="result-section"><h2>What this means for your home</h2>${d.reasons.length ? `<ul class="reason-list">${d.reasons.map(x => `<li><span class="reason-marker ${escape(x.type)}" aria-hidden="true">${markers[x.type] || 'i'}</span><p>${escape(x.text)}</p></li>`).join('')}</ul>` : '<p>We don’t yet have enough information about your home or heating. Add the details you know, and we’ll help you see what remains to be checked.</p>'}</section>`
-    + (d.homeowner_can_provide.length || boundaries ? `<section class="next-question"><span class="eyebrow">Your next useful step</span><h2>A little more information can help.</h2>${d.homeowner_can_provide.length ? `<ul>${d.homeowner_can_provide.map(x => `<li>${escape(x)}</li>`).join('')}</ul>` : ''}${boundaries}<div class="next-step-actions"><button class="button primary" data-add-evidence>Add a bill or photo ${sparkle}</button><button class="back-button" data-go="4">Update my answers →</button></div><p class="small">Our AI helper can look for the missing details. You’ll review them before your result changes.</p></section>` : '')
-    + `<section class="result-section"><h2>Keep the next conversation simple.</h2><p>A heating professional will need to:</p><ol class="checklist">${d.technician_checks.map(x => `<li>${escape(x)}</li>`).join('')}</ol></section></div>`
-    + `<aside class="estimates"><h2>Your estimates, explained</h2><p>Two ways to estimate the heating power your home needs.</p><div class="estimate"><span>From your home’s size and age</span><strong>${range(load.by_area)}</strong></div><div class="estimate"><span>From your energy use</span><strong>${range(load.by_consumption)}</strong></div>`
-    + (load.consistent === false ? '<p class="estimate-warning"><strong>These estimates disagree.</strong> Both are kept in the check; a professional should review why before sizing a heat pump.</p>' : '')
-    + `<div class="estimate"><span>Used for this check</span><strong>${range(load.used)}</strong></div><p class="small">kW describes heating power. These rough estimates are not the size of heat pump you should buy.</p>`
-    + (cases ? `<div class="estimate"><span>Water temperature your heating would need</span><dl class="flow-list">${Object.entries(cases).map(([t, x]) => `<div><dt>${escape(caseNames[t] || t)}</dt><dd>${temps(x)}</dd></div>`).join('')}</dl><p class="small">Up to 55 °C works efficiently. 55–60 °C works with higher running costs. Above 60 °C some radiators should be upgraded.</p></div>` : '')
-    + `<details class="cost-details"><summary>What about running costs?</summary><p>Illustrative annual energy costs using fixed challenge prices.</p><dl class="cost-list"><div><dt>Current heating</dt><dd>${cost.today === null ? 'More information needed' : money(cost.today)}</dd></div><div><dt>Heat pump scenarios</dt><dd>${cost.heat_pump ? cost.heat_pump.map(money).filter((x, i, a) => a.indexOf(x) === i).join('–') : 'More information needed'}</dd></div>${cost.saving ? `<div><dt>Possible saving per year</dt><dd>${cost.saving.map(money).filter((x, i, a) => a.indexOf(x) === i).join('–')}</dd></div>` : ''}</dl>${cost.note ? `<p class="small">Note: ${escape(cost.note)}.</p>` : ''}</details></aside></div>`
-    + `<details class="assumptions"><summary>See the assumptions behind this check</summary><div><h2>Assumptions behind this first check</h2><ul>${d.assumptions.map(x => `<li>${escape(x)}</li>`).join('')}<li>Radiator ratings are placeholder values until checked against manufacturer data. No final equipment sizing is provided.</li></ul></div></details>`
-    + '<div class="result-actions"><button class="button primary" data-download>Save my summary <span aria-hidden="true">↓</span></button><button class="button secondary" data-print>Print this assessment</button><button class="reset-button" data-reset>Start a new check</button></div><p class="quiet">Your summary includes the details and questions to discuss with a heating professional.</p></main>';
+
+  const { processed: p, outputs: o } = assessment.data, d = o.decision, cost = o['03_operating_cost'].cost_eur_per_year;
+  const v = verdictMeta(d, Boolean(o['02_radiator_check'].flow_temp_c.by_case));
+  const fuel = labels.energy_carrier[p['03_operating_cost'].fields.energy_carrier.value] || 'current fuel';
+  return `<main id="main" class="result-main rp">${top}
+    <section class="rp-layer" aria-labelledby="page-title"><p class="rp-layer-label">Result · ${escape(d.building_id)}</p><div class="rp-top">
+      <div class="rp-card rp-verdict ${v.cls}"><p class="eyebrow">${v.eyebrow}</p><h1 id="page-title" tabindex="-1">${v.title}</h1><p>${escape(firstSentence(d.summary))}</p></div>
+      <div class="rp-card rp-saving"><p class="eyebrow">Energy cost saving</p><p class="rp-big">${cost.saving ? `${euros(cost.saving)}<span> / year</span>` : '—'}</p>${costBars(cost, fuel)}<p class="small">Fixed challenge prices, energy only.</p></div>
+    </div></section>
+    <div class="rp-link" aria-hidden="true">↑</div>
+    <section class="rp-layer" aria-label="How it was calculated"><p class="rp-layer-label">4 steps</p><ol class="rp-steps">${stepCards(p, o).map((x, i) => `<li class="rp-card rp-step"><p class="rp-num">Step ${i + 1}</p><h2>${x.title}</h2><p>${escape(x.sentence)}</p><code class="rp-eq">${escape(x.equation)}</code><p class="rp-result">${escape(x.result)}</p></li>`).join('')}</ol></section>
+    <div class="rp-links" aria-hidden="true"><span>↑</span><span>↑</span><span>↑</span><span>↑</span></div>
+    <section class="rp-layer" aria-label="Inputs and evidence"><p class="rp-layer-label">Inputs & evidence</p><div class="rp-inputs">${INPUTS.map(col => `<ul class="rp-card">${col.map(x => inputItem(p, x)).join('')}</ul>`).join('')}</div></section>
+    ${d.homeowner_can_provide.length ? `<section class="next-question"><p class="eyebrow">Your next useful step</p><h2>A little more information can help.</h2><ul>${d.homeowner_can_provide.map(x => `<li>${escape(x)}</li>`).join('')}</ul><div class="next-step-actions"><button class="button primary" data-add-evidence>Add a bill or photo ${sparkle}</button><button class="back-button" data-go="4">Update my answers →</button></div><p class="small">Our AI helper can look for missing details. You’ll review them before your result changes.</p></section>` : ''}
+    <details class="assumptions"><summary>What a professional needs to check</summary><ul>${d.technician_checks.map(x => `<li>${escape(x)}</li>`).join('')}</ul></details>
+    <div class="result-actions"><button class="button primary" data-download>Save my summary ↓</button><button class="button secondary" data-print>Print this assessment</button><button class="reset-button" data-reset>Start a new check</button></div></main>`;
 }
 function render() {
   document.documentElement.classList.toggle('larger-text', state.larger);
@@ -310,7 +394,7 @@ app.addEventListener('click', async event => {
   if (button.hasAttribute('data-retry-assess')) { assessment = { key: null, status: 'idle', data: null }; render(); }
   if (button.hasAttribute('data-reset')) document.querySelector('#reset-dialog').showModal();
   if (button.hasAttribute('data-cancel-reset')) document.querySelector('#reset-dialog').close();
-  if (button.hasAttribute('data-confirm-reset')) { state.answers = empty(); state.sample = false; state.evidence = {}; chosenFiles = []; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; returnToReview = false; setStep(0); announce('Your answers have been cleared.'); }
+  if (button.hasAttribute('data-confirm-reset')) { state.answers = empty(); state.sample = false; state.sampleAnswers = null; state.evidence = {}; chosenFiles = []; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; returnToReview = false; setStep(0); announce('Your answers have been cleared.'); }
   if (button.hasAttribute('data-print')) window.print();
   if (button.hasAttribute('data-download')) downloadSummary();
 });
@@ -334,7 +418,7 @@ function loadSample(id) {
   a.other_heat_source = /wood stove/i.test(sample.building_notes) ? 'yes' : 'unknown';
   a.solar_thermal = /solar thermal/i.test(sample.building_notes) ? 'yes' : 'unknown';
   a.building_notes = [sample.building_notes, sample.radiator_info].filter(Boolean).join('\n\n');
-  state.answers = a; state.sample = true; state.evidence = {}; chosenFiles = []; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; setStep(4); announce(`Example home ${id} loaded. Review the answers before continuing.`);
+  state.answers = a; state.sample = true; state.sampleAnswers = JSON.stringify(a); state.evidence = {}; chosenFiles = []; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; setStep(4); announce(`Example home ${id} loaded. Review the answers before continuing.`);
 }
 async function loadSamples() {
   try {
@@ -344,6 +428,7 @@ async function loadSamples() {
   } catch { sampleError = 'Example homes could not be loaded. You can still check your own home.'; }
   if (state.step === 0) render();
 }
+const caseNames = { 33: 'Three-panel radiators (type 33)', 22: 'Two-panel radiators (type 22)', 11: 'One-panel radiators (type 11)', underfloor: 'Underfloor heating' };
 function downloadSummary() {
   if (assessment.status !== 'done') return;
   const { decision: d, '01_heat_load': h, '02_radiator_check': r, '03_operating_cost': c } = assessment.data.outputs;
@@ -361,6 +446,11 @@ function downloadSummary() {
   const link = document.createElement('a'); link.href = url; link.download = 'my-heat-pump-home-check.txt'; link.click();
   setTimeout(() => URL.revokeObjectURL(url), 30000); announce('Your summary has been prepared for download.');
 }
+// ?demo=B-03 opens that example home's result directly (for presenting).
+function openDemo() {
+  const id = new URLSearchParams(location.search).get('demo');
+  if (id && samples.some(b => b.building_id === id)) { loadSample(id); setStep(5); }
+}
 addedCount = reviewedEvidence().length;
-render(); loadSamples();
+render(); loadSamples().then(openDemo);
 fetch('/api/ai-status').then(r => r.json()).then(status => { aiAvailable = status.available; if (state.step === 1 && extraction.status === 'idle' && !chosenFiles.length) render(); }).catch(() => {});

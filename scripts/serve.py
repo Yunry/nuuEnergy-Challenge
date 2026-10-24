@@ -3,6 +3,7 @@
 usage: python3 scripts/serve.py        -> http://127.0.0.1:4173   (PORT=4174 python3 scripts/serve.py to change)
   POST /api/assess      customer_input -> {processed, outputs}
   GET  /api/samples     demo customers' raw input (no development labels)
+  GET  /api/demo/<id>   {processed, outputs} for a demo customer's hand-extracted processed/ files
   GET  /api/evaluation  internal competition evaluation, shown at /evaluation.html
 """
 import json
@@ -21,6 +22,7 @@ import engine  # noqa: E402
 import prepare  # noqa: E402
 from evaluate import evaluate  # noqa: E402
 import ai_extract  # noqa: E402
+from run_engine import DEMO, load_steps  # noqa: E402
 
 ai_extract.load_env(ROOT / '.env')
 
@@ -30,8 +32,12 @@ MAX_BODY = 100_000
 
 
 def samples():
-    demo = ROOT / "data" / "demo"
-    return [json.loads((d / "raw" / "customer_input.json").read_text()) for d in sorted(demo.glob("B-*"))]
+    return [json.loads((d / "raw" / "customer_input.json").read_text()) for d in sorted(DEMO.glob("B-*"))]
+
+
+def demo(building_id):
+    steps = load_steps(building_id)
+    return {"processed": steps, "outputs": engine.run(building_id, steps)}
 
 
 def assess(customer_input):
@@ -62,6 +68,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.api(evaluate)
         if path == "/api/ai-status":
             return self.api(lambda: {"available": ai_extract.configured()})
+        match = re.fullmatch(r"/api/demo/(B-\d+)", path)
+        if match and any((DEMO / match[1] / "processed").glob("*.json")):
+            return self.api(demo, match[1])
         path = "/index.html" if path == "/" else path
         if not ALLOWED.match(path):
             return self.send(404, b"Not found")

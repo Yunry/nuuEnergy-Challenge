@@ -121,6 +121,17 @@ class LocalHTTP(unittest.TestCase):
         except urllib.error.HTTPError as error:
             return error.code, error.read()
 
+    def test_upstream_demo_routes_keep_all_five_examples_working(self):
+        for i in range(1, 6):
+            building_id = f'B-{i:02d}'
+            with self.subTest(building_id=building_id):
+                status, body = self.request('/api/demo/' + building_id)
+                self.assertEqual(status, 200)
+                result = json.loads(body)
+                self.assertEqual(result['outputs']['decision']['building_id'], building_id)
+                self.assertEqual(len(result['processed']), 4)
+        self.assertEqual(self.request('/api/demo/B-99')[0], 404)
+
     def test_http_upload_to_assessment_and_private_files(self):
         with patch.object(ai, 'extract', return_value=extracted(energy_carrier='gas')):
             status, body = self.request('/api/extract', upload())
