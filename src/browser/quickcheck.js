@@ -53,7 +53,7 @@ export const CONSUMPTION_RANGES = {
 export const RADIATOR_RANGES = [['1-5', '1–5', 3], ['6-10', '6–10', 8], ['11-15', '11–15', 13], ['16-20', '16–20', 18], ['20+', 'More than 20', 22]];
 // The engine reads the year as a band (before 1979 / 1980s–90s / 2002 and later); one representative year per answer.
 export const YEAR_BANDS = [['1970', 'Before 1979'], ['1990', '1980–2001'], ['2010', '2002 or later']];
-export const RENOVATION = [['unrenovated', 'No'], ['partially', 'Some of it'], ['fully', 'All of it']];
+export const RENOVATION = [['unrenovated', 'Nothing major', ''], ['partially', 'Some of it', 'For example new windows or roof insulation'], ['fully', 'Most of it', 'Windows, roof and walls']];
 export const UNUSUAL = [
   ['unheated', 'Some rooms are not heated'],
   ['stove', 'We often use a wood stove or fireplace'],
@@ -151,11 +151,9 @@ export function questionHtml(id, a, qc, ctx) {
     case 'year':
       return head('B2', 'When was your home built?') + `<div class="qc-options">${YEAR_BANDS.map(([v, l]) => option('construction_year', v, l, a.construction_year === v)).join('')}</div>${notSure('construction_year', qc.yearUnknown)}${nav(Boolean(a.construction_year) || qc.yearUnknown)}`;
     case 'renovation': {
-      const i = RENOVATION.findIndex(([v]) => v === a.renovation_status), touched = qc.renovationTouched && i >= 0;
-      return head('B3', 'Have you made energy improvements?', 'For example new windows, or insulation in the roof or walls.')
-        + `<div class="qc-slider-value" aria-live="polite">${touched ? RENOVATION[i][1] : 'Move the slider'}</div>
-        <input type="range" class="qc-range ${touched ? '' : 'untouched'}" id="qc-renovation" min="0" max="2" step="1" value="${touched ? i : 1}" aria-label="Energy improvements" aria-valuetext="${touched ? RENOVATION[i][1] : 'not set'}" data-qc-range="renovation">
-        <div class="qc-scale three"><span>No</span><span>Some of it</span><span>All of it</span></div>${notSure('renovation', qc.renovationUnknown)}${nav(touched || qc.renovationUnknown, 'See my result')}`;
+      const chosen = qc.renovationTouched ? a.renovation_status : null;
+      return head('B3', 'How much of your home has been modernised for energy?', 'For example new windows, or insulation in the roof or walls.')
+        + `<div class="qc-options">${RENOVATION.map(([v, l, hint]) => option('renovation', v, l, chosen === v, '', hint)).join('')}</div>${notSure('renovation', qc.renovationUnknown)}${nav(Boolean(chosen) || qc.renovationUnknown, 'See my result')}`;
     }
     case 'unusual':
       return head('B15', 'Your energy use looks unusual for a home like yours', 'It is quite a bit lower or higher than we would expect. Could it be because of… (choose all that fit)')
