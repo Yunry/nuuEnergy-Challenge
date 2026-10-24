@@ -36,6 +36,15 @@
     "reading_type": "calculated"
   },
   {
+    "file": "energieausweis_b03_hamburg_1970_oel.pdf",
+    "json_file": "data/processed/extracted_bills/energieausweis_b03_hamburg_1970_oel.json",
+    "fields_extracted": 7,
+    "carrier": "oil",
+    "consumption_kwh": 40000.0,
+    "cost_eur": 6800.0,
+    "reading_type": "customer_reading"
+  },
+  {
     "file": "erdgas_suedwest_jahresabrechnung.pdf",
     "json_file": "data/processed/extracted_bills/erdgas_suedwest_jahresabrechnung.json",
     "fields_extracted": 1,

@@ -1,0 +1,52 @@
+{
+  "source_file": "energieausweis_b03_hamburg_1970_oel.pdf",
+  "page_count": 2,
+  "fields": {
+    "energy_carrier": {
+      "value": "oil",
+      "source": "energy_bill.energieausweis_b03_hamburg_1970_oel.pdf#energy_carrier",
+      "confidence": "high",
+      "evidence": "Energieausweis Fallstudie B-03: Wesentlicher Energieträger Heizöl EL"
+    },
+    "annual_consumption_kwh": {
+      "value": 40000.0,
+      "source": "energy_bill.energieausweis_b03_hamburg_1970_oel.pdf#annual_consumption_kwh",
+      "confidence": "high",
+      "evidence": "Energieausweis B-03: 3-Jahres-Mittel 40.000 kWh/a (~4.000 l)"
+    },
+    "billing_period": {
+      "value": {
+        "start_date": "01.01.2021",
+        "end_date": "31.12.2023",
+        "days": 1095
+      },
+      "source": "energy_bill.energieausweis_b03_hamburg_1970_oel.pdf#billing_period",
+      "confidence": "high",
+      "evidence": "Erfassungszeitraum 3 Jahre (2021 - 2023)"
+    },
+    "current_annual_cost_eur": {
+      "value": 6800.0,
+      "source": "energy_bill.energieausweis_b03_hamburg_1970_oel.pdf#current_annual_cost_eur",
+      "confidence": "high",
+      "evidence": "Heizöl-Kosten bei 0,17 EUR/kWh (40.000 x 0,17)"
+    },
+    "meter_reading_type": {
+      "value": "customer_reading",
+      "source": "energy_bill.energieausweis_b03_hamburg_1970_oel.pdf#meter_reading_type",
+      "confidence": "high",
+      "evidence": "Abrechnungsdaten Heizkostenabrechnung"
+    },
+    "construction_year": {
+      "value": 1970,
+      "source": "energy_bill.energieausweis_b03_hamburg_1970_oel.pdf#construction_year",
+      "confidence": "high",
+      "evidence": "Energieausweis B-03 Seite 1: Baujahr Gebäude 1970"
+    },
+    "floor_area_m2": {
+      "value": 200.0,
+      "source": "energy_bill.energieausweis_b03_hamburg_1970_oel.pdf#floor_area_m2",
+      "confidence": "high",
+      "evidence": "Energieausweis B-03 Seite 1: Wohnfläche 200,0 m² (Gebäudenutzfläche 240,0 m²)"
+    }
+  }
+}

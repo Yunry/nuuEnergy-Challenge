@@ -58,6 +58,15 @@ GROUND_TRUTH_SCANNED = {
         "meter_reading_type": {"value": "customer_reading", "confidence": "high", "evidence": "Abrechnungsdaten Heizkostenabrechnung"},
         "construction_year": {"value": 1982, "confidence": "high", "evidence": "Energieausweis Seite 1: Baujahr Gebäude 1982"},
         "floor_area_m2": {"value": 165.0, "confidence": "high", "evidence": "Energieausweis Seite 1: Wohnfläche 165,0 m² (Gebäudenutzfläche 198,0 m²)"}
+    },
+    "energieausweis_b03_hamburg_1970_oel.pdf": {
+        "energy_carrier": {"value": "oil", "confidence": "high", "evidence": "Energieausweis Fallstudie B-03: Wesentlicher Energieträger Heizöl EL"},
+        "annual_consumption_kwh": {"value": 40000.0, "confidence": "high", "evidence": "Energieausweis B-03: 3-Jahres-Mittel 40.000 kWh/a (~4.000 l)"},
+        "billing_period": {"value": {"start_date": "01.01.2021", "end_date": "31.12.2023", "days": 1095}, "confidence": "high", "evidence": "Erfassungszeitraum 3 Jahre (2021 - 2023)"},
+        "current_annual_cost_eur": {"value": 6800.00, "confidence": "high", "evidence": "Heizöl-Kosten bei 0,17 EUR/kWh (40.000 x 0,17)"},
+        "meter_reading_type": {"value": "customer_reading", "confidence": "high", "evidence": "Abrechnungsdaten Heizkostenabrechnung"},
+        "construction_year": {"value": 1970, "confidence": "high", "evidence": "Energieausweis B-03 Seite 1: Baujahr Gebäude 1970"},
+        "floor_area_m2": {"value": 200.0, "confidence": "high", "evidence": "Energieausweis B-03 Seite 1: Wohnfläche 200,0 m² (Gebäudenutzfläche 240,0 m²)"}
     }
 }
 
