@@ -1218,9 +1218,25 @@ function downloadSummary() {
   setTimeout(() => URL.revokeObjectURL(url), 30000); announce('Your summary has been prepared for download.');
 }
 // ?demo=B-03 opens that example home's result directly (for presenting).
-function openDemo() {
+async function openDemo() {
   const id = new URLSearchParams(location.search).get('demo');
-  if (id && samples.some(b => b.building_id === id)) { loadSample(id); setStep(5); }
+  if (!id) return;
+  if (samples.some(b => b.building_id === id)) {
+    loadSample(id);
+    setStep(5);
+  } else if (id === 'B-Live') {
+    try {
+      const data = await demo(id);
+      assessment = { key: id, status: 'done', data };
+      whatIf = { processed: data.processed };
+      state.answers = { ...empty(), building_id: id };
+      state.sample = true;
+      setStep(5);
+      announce(`Live workspace ${id} loaded.`);
+    } catch (e) {
+      console.error('Could not load B-Live demo', e);
+    }
+  }
 }
 addedCount = reviewedEvidence().length;
 // A ?demo= link loads its example fresh: don't assess (and save) answers left over in this tab first.

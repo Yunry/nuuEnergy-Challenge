@@ -103,6 +103,8 @@ def samples():
 def demo(building_id):
     """A demo customer's processed files; for a customer collected step by step (B-Live), its latest step."""
     folder = customer_folder(building_id)
+    if building_id == "B-Live" and (not (folder / "steps").is_dir() or not customer_steps.step_dirs(folder)):
+        live_start(folder=folder)
     steps = customer_steps.latest_processed(folder) if (folder / "steps").is_dir() else load_steps(building_id)
     return {"processed": steps, "outputs": engine.run(building_id, steps)}
 
@@ -183,9 +185,31 @@ def live_state(folder=LIVE):
 LIVE_BASE = "B-05"  # the live demo starts from this home's questionnaire: a decision is possible, but not certain
 
 
-def live_start(folder=LIVE):
-    customer_input = {**json.loads((DEMO / LIVE_BASE / "raw" / "customer_input.json").read_text()), "building_id": folder.name}
+def live_start(folder_or_body=None, folder=None, register=REGISTER):
+    if isinstance(folder_or_body, (str, Path)):
+        folder = Path(folder_or_body)
+        body = None
+    elif isinstance(folder_or_body, dict):
+        body = folder_or_body
+        folder = Path(folder) if folder is not None else LIVE
+    else:
+        body = None
+        folder = Path(folder) if folder is not None else LIVE
+
+    input_file = DEMO / LIVE_BASE / "raw" / "customer_input.json"
+    if not input_file.is_file():
+        input_file = FIXTURE_DEMO / LIVE_BASE / "raw" / "customer_input.json"
+    customer_input = {**json.loads(input_file.read_text()), "building_id": folder.name}
     customer_steps.start(folder, customer_input, load_steps(LIVE_BASE), label="questionnaire")
+    if isinstance(body, dict) and body.get("history"):
+        for item in body["history"]:
+            if item.get("type") == "demo" or item.get("name") in {f["name"] for f in demo_files(register)}:
+                path = demo_file(item["name"], register)
+                if path:
+                    files = [{"name": path.name, "type": FILE_TYPES[path.suffix.lower()], "data": base64.b64encode(path.read_bytes()).decode()}]
+                    live_upload({"files": files, "auto_start": True}, folder, register)
+            elif item.get("files"):
+                live_upload({"files": item["files"], "auto_start": True}, folder, register)
     return live_state(folder)
 
 
@@ -215,12 +239,19 @@ def live_use_demo(body, folder=LIVE, register=REGISTER):
     if path is None:
         raise ai_extract.ExtractionError("Unknown demo file.", 404)
     files = [{"name": path.name, "type": FILE_TYPES[path.suffix.lower()], "data": base64.b64encode(path.read_bytes()).decode()}]
-    return live_upload({"files": files}, folder, register)
+    return live_upload({**body, "files": files, "auto_start": True}, folder, register)
 
 
 def live_upload(body, folder=LIVE, register=REGISTER):
     if not (folder / "timeline.json").exists():
-        raise ai_extract.ExtractionError("Start the live demo first.", 409)
+        if body.get("auto_start") or body.get("history"):
+            live_start(folder=folder, register=register)
+        else:
+            raise ai_extract.ExtractionError("Start the live demo first.", 409)
+    history = body.get("history") or []
+    dirs = customer_steps.step_dirs(folder)
+    if history and (len(dirs) - 1) < len(history):
+        live_start(folder_or_body={"history": history}, folder=folder, register=register)
     ai_extract.validate_files(body)
     with tempfile.TemporaryDirectory() as tmp:
         paths, facts, notes = [], {}, []
@@ -370,16 +401,18 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/scenarios":
             return self.api(scenarios.run, body["processed"], body.get("values"))
         if path == "/api/live/start":
-            return self.api(live_start)
+            return self.api(live_start, body)
         if path == "/api/live/reset":
             return self.api(live_reset)
         if path == "/api/live/use-demo":
             try:
+                body.setdefault("auto_start", True)
                 return self.send(200, json.dumps(live_use_demo(body), ensure_ascii=False).encode(), "application/json; charset=utf-8")
             except ai_extract.ExtractionError as exc:
                 return self.send(exc.status, json.dumps({"error": str(exc)}).encode(), "application/json; charset=utf-8")
         if path == "/api/live/upload":
             try:
+                body.setdefault("auto_start", True)
                 return self.send(200, json.dumps(live_upload(body), ensure_ascii=False).encode(), "application/json; charset=utf-8")
             except ai_extract.ExtractionError as exc:
                 return self.send(exc.status, json.dumps({"error": str(exc)}).encode(), "application/json; charset=utf-8")
