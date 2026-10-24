@@ -1,6 +1,8 @@
 """Local server: the browser app (index.html, src/browser/) plus the Python decision engine as a small JSON API.
 
 usage: python3 scripts/serve.py        -> http://127.0.0.1:4173   (PORT=4174 python3 scripts/serve.py to change)
+       HOST=0.0.0.0 python3 scripts/serve.py   also reachable from phones on the same network (prints the address);
+                                              anyone on that network can then use the app and its AI key
   POST /api/assess      customer_input -> {processed, outputs}
   POST /api/scenarios   {processed, values} -> assumptions, what-if result and per-input sweeps
   POST /api/upload      {customer_id, files} -> files saved to data/demo/<customer_id>/raw/{photos,documents}/
@@ -11,6 +13,8 @@ usage: python3 scripts/serve.py        -> http://127.0.0.1:4173   (PORT=4174 pyt
   Live demo customer data/demo/B-Live (page /live.html), one saved step per upload:
   GET  /api/live         its timeline and latest step      POST /api/live/start   step 00 from B-05's questionnaire
   POST /api/live/upload  {files} -> next step              POST /api/live/reset   empty the folder
+  GET  /api/live/demo-files, /api/live/demo-file/<name>     the demo files this server has (data/customer/demo)
+  POST /api/live/use-demo  {name} -> next step from the server's own copy (for phones that don't have the file)
 """
 import base64
 import hashlib
@@ -24,7 +28,7 @@ import traceback
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src" / "decision_engine"))
@@ -147,6 +151,29 @@ def live_reset(folder=LIVE):
     return live_state(folder)
 
 
+def demo_files(register=REGISTER):
+    """The demo files in the register that this server has, so any device can preview and use them."""
+    entries = json.loads(Path(register).read_text())["files"] if Path(register).is_file() else []
+    return [{"name": e["file"], "kind": Path(e["file"]).suffix.lower().lstrip("."), "note": e["note"], "url": f"/api/live/demo-file/{e['file']}"}
+            for e in entries if (Path(register).parent / e["file"]).is_file()]
+
+
+def demo_file(name, register=REGISTER):
+    """Path of a demo file by name, only for names listed in the register."""
+    if name in {f["name"] for f in demo_files(register)}:
+        return Path(register).parent / name
+    return None
+
+
+def live_use_demo(body, folder=LIVE, register=REGISTER):
+    """Add a demo file from the server's own copy as the next live step, as if it had been uploaded."""
+    path = demo_file(body.get("name"), register)
+    if path is None:
+        raise ai_extract.ExtractionError("Unknown demo file.", 404)
+    files = [{"name": path.name, "type": FILE_TYPES[path.suffix.lower()], "data": base64.b64encode(path.read_bytes()).decode()}]
+    return live_upload({"files": files}, folder, register)
+
+
 def live_upload(body, folder=LIVE, register=REGISTER):
     if not (folder / "timeline.json").exists():
         raise ai_extract.ExtractionError("Start the live demo first.", 409)
@@ -246,6 +273,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.api(lambda: {"available": ai_extract.configured()})
         if path == "/api/live":
             return self.api(live_state)
+        if path == "/api/live/demo-files":
+            return self.api(demo_files)
+        if path.startswith("/api/live/demo-file/"):
+            file = demo_file(unquote(path.rsplit("/", 1)[1]))
+            if file is None:
+                return self.send(404, b"Not found")
+            return self.send(200, file.read_bytes(), FILE_TYPES[file.suffix.lower()])
         match = re.fullmatch(rf"/api/customer/({FOLDER_ID})/files", path)
         if match:
             return self.api(raw_inputs, match[1])
@@ -266,11 +300,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
-        if path not in ("/api/assess", "/api/scenarios", "/api/extract", "/api/upload", "/api/live/start", "/api/live/upload", "/api/live/reset"):
+        if path not in ("/api/assess", "/api/scenarios", "/api/extract", "/api/upload", "/api/live/start", "/api/live/upload", "/api/live/reset", "/api/live/use-demo"):
             return self.send(404, b"Not found")
         # This local API accepts same-origin JSON only, including for paid AI requests.
         origin = self.headers.get('Origin')
-        if origin and origin != 'http://' + self.headers.get('Host', ''):
+        if origin and origin.split('://', 1)[-1] != self.headers.get('Host', ''):  # same host, http or https (tunnels)
             return self.send(403, b"Cross-origin requests are not allowed")
         if self.headers.get_content_type() != 'application/json':
             return self.send(415, b"Expected application/json")
@@ -291,6 +325,11 @@ class Handler(BaseHTTPRequestHandler):
             return self.api(live_start)
         if path == "/api/live/reset":
             return self.api(live_reset)
+        if path == "/api/live/use-demo":
+            try:
+                return self.send(200, json.dumps(live_use_demo(body), ensure_ascii=False).encode(), "application/json; charset=utf-8")
+            except ai_extract.ExtractionError as exc:
+                return self.send(exc.status, json.dumps({"error": str(exc)}).encode(), "application/json; charset=utf-8")
         if path == "/api/live/upload":
             try:
                 return self.send(200, json.dumps(live_upload(body), ensure_ascii=False).encode(), "application/json; charset=utf-8")
@@ -317,7 +356,20 @@ class Handler(BaseHTTPRequestHandler):
         self.api(assess, body)
 
 
+def lan_address():
+    """This machine's address on the local network (no traffic is sent)."""
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        try:
+            s.connect(("192.0.2.1", 9))
+            return s.getsockname()[0]
+        except OSError:
+            return "127.0.0.1"
+
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 4173))
-    print(f"Local: http://127.0.0.1:{port}   internal evaluation: http://127.0.0.1:{port}/evaluation.html")
-    ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    port, host = int(os.environ.get("PORT", 4173)), os.environ.get("HOST", "127.0.0.1")
+    print(f"Local: http://127.0.0.1:{port}   internal evaluation: http://127.0.0.1:{port}/evaluation.html", flush=True)
+    if host != "127.0.0.1":
+        print(f"Phone / other devices on this network: http://{lan_address()}:{port}   live demo: http://{lan_address()}:{port}/live.html?fresh=1", flush=True)
+    ThreadingHTTPServer((host, port), Handler).serve_forever()

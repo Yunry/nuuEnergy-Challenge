@@ -4,12 +4,13 @@
 import { filePayload, validateFiles } from './extraction.js';
 
 const root = document.querySelector('#live');
-let state = null, busy = false, message = '';
+let state = null, busy = false, message = '', demoFiles = [];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const num = n => new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 }).format(n);
 const span = (r, unit) => (!r ? '—' : (r[0] === r[1] ? num(r[0]) : `${num(r[0])}–${num(r[1])}`) + unit);
 const announce = text => { document.querySelector('#announcement').textContent = text; };
-const DEMO_FILES = ['07_unklar_bad-multiblock.jpeg (unclear photo)', '05_zweirohr-vermutet_kompakt.jpeg (clear radiator photo)'];
+// The demo story's files, in order. The server keeps them (data/customer/demo), so a phone can use them without having them.
+const STORY = [['07_unklar_bad-multiblock.jpeg', '1 · Unclear photo'], ['05_zweirohr-vermutet_kompakt.jpeg', '2 · Clear radiator photo']];
 
 async function call(path, body) {
   const response = await fetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -70,14 +71,26 @@ function render() {
       <label class="button primary live-upload ${!state.started || busy ? 'disabled' : ''}">Upload a document or photo<input type="file" class="sr-only" id="live-file" accept="application/pdf,image/jpeg,image/png,image/webp" ${!state.started || busy ? 'disabled' : ''}></label>
       <button type="button" class="button secondary" data-start ${busy ? 'disabled' : ''}>${state.started ? 'Start again (empty workspace)' : 'Start the workspace'}</button>
       <span class="qc-drop-hint">${state.started ? 'or drag a file here' : ''}</span></div>
-    <p class="small">Demo files in <code>data/customer/demo/</code>: ${DEMO_FILES.map(f => `<code>${esc(f)}</code>`).join(', ')}.</p>
+    ${demoPanel()}
     ${message ? `<p class="live-message" role="status">${esc(message)}</p>` : ''}`;
   root.innerHTML = controls + (state.started ? latest(state.latest) + timeline(state.timeline) : '<p>The workspace <code>data/demo/B-Live/</code> is empty.</p>');
 }
 
+function demoPanel() {
+  const files = STORY.map(([name, label]) => [demoFiles.find(f => f.name === name), label]).filter(([f]) => f);
+  if (!files.length) return '';
+  const used = new Set((state?.timeline || []).flatMap(r => r.files.map(f => f.split('/').at(-1))));
+  return `<section class="live-demo-files" aria-label="Demo files on this server"><h2>Demo files on this server</h2>
+    <p class="small">No need to have them on this device: the server adds its own copy. Or upload your own file above.</p>
+    <div class="live-demo-grid">${files.map(([f, label]) => `<article class="rp-card live-demo-file">
+      ${f.kind === 'pdf' ? '<span class="di-icon pdf" aria-hidden="true">PDF</span>' : `<img src="${esc(f.url)}" alt="${esc(label)}: ${esc(f.name)}" loading="lazy">`}
+      <p class="live-demo-label">${esc(label)}</p><p class="small">${esc(f.note)}</p>
+      <button type="button" class="button ${used.has(f.name) ? 'secondary' : 'primary'}" data-demo-file="${esc(f.name)}" ${!state?.started || busy ? 'disabled' : ''}>${used.has(f.name) ? '✓ Used · use again' : 'Use this file'}</button></article>`).join('')}</div></section>`;
+}
 root.addEventListener('click', event => {
   const b = event.target.closest('button');
   if (!b || busy) return;
+  if (b.dataset.demoFile) act(`Adding ${b.dataset.demoFile}`, () => call('/api/live/use-demo', { name: b.dataset.demoFile }));
   if (b.hasAttribute('data-start')) act('Starting an empty workspace', async () => { await call('/api/live/reset', {}); return call('/api/live/start', {}); });
 });
 function upload(files) {
@@ -107,6 +120,7 @@ window.addEventListener('dragover', event => { if (!event.target.closest?.('[dat
 window.addEventListener('drop', event => { if (!event.target.closest?.('[data-live-drop]')) event.preventDefault(); });
 
 // Opened from the welcome page (?fresh=1): always start from an empty workspace with the questionnaire.
+call('/api/live/demo-files').then(files => { demoFiles = files; if (state) render(); }).catch(() => {});
 if (new URLSearchParams(location.search).has('fresh')) {
   history.replaceState(null, '', location.pathname);
   act('Starting an empty workspace', async () => { await call('/api/live/reset', {}); return call('/api/live/start', {}); });
