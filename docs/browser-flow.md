@@ -159,3 +159,9 @@ The automated suite exercises cumulative uploads, duplicate bytes, cache hits, f
 contradictory values, different bill years, invalid dates, unit/fuel mismatches and explicit review
 choices independently of engine verdict labels. Raw image compression and model upgrades are deferred
 until a larger verified extraction set can measure loss of detail and field accuracy.
+
+### Completed assessment history
+
+Completed assessments are kept in this browser's local storage (up to 50), grouped by home on the homepage; example homes are labelled separately. Each entry reopens its answers, reviewed evidence, computed result, and completed what-if settings. Updating a check updates its existing history entry. This is browser-local history, not a shared list of server customers or a backup of uploaded file bytes. Checks completed before this feature was added do not appear automatically. If storage is unavailable, the homepage explains that history only lasts until reload.
+
+Returning to the homepage clears the active questionnaire, customer ID, uploads, evidence, confirmation choices, cached results, and pending UI work. Completed history remains available. Preferences such as view mode and text size remain. A new check starts empty and receives its own customer ID.

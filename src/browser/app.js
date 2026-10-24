@@ -4,6 +4,13 @@ import { extractFiles, applyFields, fieldLabels, uploadFiles, validateFiles } fr
 
 const app = document.querySelector('#app');
 const storageKey = 'nuu-home-check-v1';
+const historyKey = 'nuu-assessment-history-v1';
+let completedChecks = [];
+try {
+  const saved = JSON.parse(localStorage.getItem(historyKey));
+  if (Array.isArray(saved)) completedChecks = saved.filter(x => x?.id && x.state?.answers && x.assessment?.data?.outputs?.decision).slice(0, 50);
+} catch { /* History is optional when browser storage is unavailable. */ }
+let historySaved = true;
 const empty = () => ({ construction_year: '', floor_area_m2: '', renovation_status: 'unknown', energy_carrier: 'unknown', heat_distribution: 'unknown', amount: '', unit: 'kwh', consumption_full_year: 'unknown', persons_in_household: '', hot_water_via_heating: 'unknown', flow_temperature_c: '', pipe_system: 'unknown', radiator_count: '', radiator_type: 'unknown', other_heat_source: 'unknown', solar_thermal: 'unknown', building_notes: '', building_id: 'HOME' });
 let state = { step: 0, answers: empty(), larger: false, sample: false, evidence: {}, evidenceReviews: {}, evidenceLedger: null, confirm: {}, mode: 'both' };
 try {
@@ -28,12 +35,53 @@ const labels = {
 function save() { try { sessionStorage.setItem(storageKey, JSON.stringify(state)); } catch {} }
 function announce(text) { document.querySelector('#announcement').textContent = text; }
 function setStep(step, push = true) {
+  if (step === 0 && state.step !== 0) { rememberAssessment(); resetActive(); }
   state.step = step; errors = {}; save();
   if (push) history.pushState({ step }, '', step ? `#${{ 5: 'result', 6: 'confirm', 7: 'what-if' }[step] || 'step-' + step}` : location.pathname);
   render(); document.querySelector('#page-title')?.focus(); window.scrollTo(0, 0);
 }
-window.addEventListener('popstate', event => setStep(Number.isInteger(event.state?.step) ? event.state.step : 0, false));
+window.addEventListener('popstate', event => {
+  const step = Number.isInteger(event.state?.step) ? event.state.step : 0;
+  // Old result URLs must not assess an empty home after the active check was reset.
+  setStep(step >= 4 && state.step === 0 && state.answers.building_id === 'HOME' ? 0 : step, false);
+});
 history.replaceState({ step: state.step }, '');
+function resetActive() {
+  const { larger, mode } = state;
+  state = { step: 0, answers: empty(), larger, mode, sample: false, evidence: {}, evidenceReviews: {}, evidenceLedger: null, confirm: {} };
+  assessment = { key: null, status: 'idle', data: null }; whatIf = { processed: null };
+  rawFiles = { id: null, files: [] }; videoCallRequested = false;
+  chosenFiles = []; uploadSave = null; uploadPromise = Promise.resolve(); addedCount = 0;
+  homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' };
+  returnToReview = false; editSnapshot = null; clearTimeout(whatIfTimer);
+}
+function rememberAssessment() {
+  if (assessment.status !== 'done' || state.step < 5) return;
+  const key = sampleUnchanged() ? `demo:${state.answers.building_id}` : JSON.stringify({ ...toCustomerInput(values()), extraction_evidence: evidencePayload() });
+  if (assessment.key !== key) return;
+  if (!state.checkId) { state.checkId = crypto.randomUUID(); save(); }
+  const existing = completedChecks.find(x => x.id === state.checkId);
+  const entry = JSON.parse(JSON.stringify({ id: state.checkId, date: existing?.date || new Date().toISOString(),
+    state, assessment, whatIf: whatIf.status === 'done' ? whatIf : null }));
+  completedChecks = [entry, ...completedChecks.filter(x => x.id !== entry.id)].slice(0, 50);
+  try { localStorage.setItem(historyKey, JSON.stringify(completedChecks)); historySaved = true; }
+  catch { historySaved = false; }
+}
+function assessmentHistory() {
+  const groups = new Map();
+  for (const entry of completedChecks) {
+    const a = entry.state.answers, group = `${entry.state.sample ? 'Example home' : 'Your home'} · ${a.building_id}`;
+    if (!groups.has(group)) groups.set(group, []);
+    groups.get(group).push(entry);
+  }
+  return `<section class="assessment-history" aria-labelledby="history-heading"><h2 id="history-heading">Your assessment history</h2>
+    <p>Completed checks, grouped by home. Saved in this browser, with your answers and evidence details. Up to 50 checks are kept.</p>
+    ${!historySaved ? '<p role="status">Browser storage is full or unavailable. This history is only available until you reload.</p>' : ''}
+    ${groups.size ? [...groups].map(([name, entries]) => `<details class="history-group"><summary>${escape(name)} <span>${entries.length} ${entries.length === 1 ? 'check' : 'checks'}</span></summary>${entries.map(e => {
+      const d = e.assessment.data.outputs.decision, a = e.state.answers;
+      return `<article class="history-entry"><div><strong>${escape(new Date(e.date).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }))}</strong><p>${escape(a.floor_area_m2 || 'Unknown area')}${a.floor_area_m2 ? ' m²' : ''} · ${escape(labels.energy_carrier[a.energy_carrier] || 'Unknown heating')} · ${escape(d.verdict.toUpperCase())}</p><p>${escape(d.summary)}</p></div><button class="button secondary" data-open-check="${escape(e.id)}">View assessment ${chevron}</button></article>`;
+    }).join('')}</details>`).join('') : '<p>No completed checks yet. Your first result will appear here.</p>'}</section>`;
+}
 function formatNumber(n) { return new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 }).format(n); }
 function range(value, unit = 'kW') { return value ? `${formatNumber(value[0])}${value[0] !== value[1] ? '–' + formatNumber(value[1]) : ''} ${unit}` : 'More information needed'; }
 function money(n) { return new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n); }
@@ -78,7 +126,7 @@ function progress() {
   return `<nav class="progress" aria-label="Your progress"><ol>${steps.map((name, i) => `<li ${state.step === i + 1 ? 'aria-current="step"' : ''} class="${state.step > i + 1 ? 'complete' : ''}"><span class="step-number">${state.step > i + 1 ? tick : i + 1}</span><span>${name}</span></li>`).join('')}</ol></nav>`;
 }
 function welcome() {
-  return `<main id="main" class="welcome"><div class="welcome-copy"><p class="eyebrow"><span class="small-line"></span> A clearer next step for your home</p><h1 id="page-title" tabindex="-1">Could a heat pump work for <span>your home?</span></h1><p class="lead">Start with a heating bill or photo. Our AI helper finds the details, you check them, and we help you see what’s possible.</p><ul class="welcome-benefits"><li>${tick}No technical knowledge needed</li><li>${tick}It’s fine if you don’t know every answer</li><li>${tick}Go at your own pace. Come back a step anytime.</li></ul><button class="button primary start-button" data-start-ai>Help me check my home ${chevron}</button><button class="back-button manual-start" data-start-manual>I’d rather answer the questions myself →</button><p class="quiet">About 3 minutes · No sign-up · You’re in control</p></div><aside class="welcome-aside"><div class="illustration-card"><span class="illustration-label">A warmer home. A clearer picture.</span>${homeArt}<div class="illustration-caption"><span class="leaf-mark" aria-hidden="true">↗</span><p>A first step towards<br><strong>heating with less fossil fuel.</strong></p></div></div><p class="aside-note">An initial check, with the final details confirmed by a heating professional.</p></aside><section class="sample-section" aria-labelledby="sample-heading"><div><h2 id="sample-heading">Just having a look?</h2><p>Explore a real, anonymised example home.</p></div><details class="sample-details"><summary>Try an example home</summary><div class="sample-list">${sampleError ? `<p role="status">${escape(sampleError)}</p><button class="button secondary" data-retry>Try loading examples again</button>` : samples.length ? samples.map(b => `<button class="sample-button" data-sample="${escape(b.building_id)}"><strong>${escape(b.building_id)} · ${b.construction_year} home</strong><span>${b.floor_area_m2} m² · ${escape(labels.heat_distribution[b.heat_distribution])}${b.pipe_system === 'single-pipe' ? ' · single-pipe' : ''}</span>${chevron}</button>`).join('') : '<p>Loading example homes…</p>'}</div></details></section></main>`;
+  return `<main id="main" class="welcome"><div class="welcome-copy"><p class="eyebrow"><span class="small-line"></span> A clearer next step for your home</p><h1 id="page-title" tabindex="-1">Could a heat pump work for <span>your home?</span></h1><p class="lead">Start with a heating bill or photo. Our AI helper finds the details, you check them, and we help you see what’s possible.</p><ul class="welcome-benefits"><li>${tick}No technical knowledge needed</li><li>${tick}It’s fine if you don’t know every answer</li><li>${tick}Go at your own pace. Come back a step anytime.</li></ul><button class="button primary start-button" data-start-ai>Help me check my home ${chevron}</button><button class="back-button manual-start" data-start-manual>I’d rather answer the questions myself →</button><p class="quiet">About 3 minutes · No sign-up · You’re in control</p></div><aside class="welcome-aside"><div class="illustration-card"><span class="illustration-label">A warmer home. A clearer picture.</span>${homeArt}<div class="illustration-caption"><span class="leaf-mark" aria-hidden="true">↗</span><p>A first step towards<br><strong>heating with less fossil fuel.</strong></p></div></div><p class="aside-note">An initial check, with the final details confirmed by a heating professional.</p></aside><section class="sample-section" aria-labelledby="sample-heading"><div><h2 id="sample-heading">Just having a look?</h2><p>Explore a real, anonymised example home.</p></div><details class="sample-details"><summary>Try an example home</summary><div class="sample-list">${sampleError ? `<p role="status">${escape(sampleError)}</p><button class="button secondary" data-retry>Try loading examples again</button>` : samples.length ? samples.map(b => `<button class="sample-button" data-sample="${escape(b.building_id)}"><strong>${escape(b.building_id)} · ${b.construction_year} home</strong><span>${b.floor_area_m2} m² · ${escape(labels.heat_distribution[b.heat_distribution])}${b.pipe_system === 'single-pipe' ? ' · single-pipe' : ''}</span>${chevron}</button>`).join('') : '<p>Loading example homes…</p>'}</div></details></section>${assessmentHistory()}</main>`;
 }
 const sparkle = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4L12 3Z"/></svg>';
 function filledBadge(key) {
@@ -248,7 +296,7 @@ async function runAssessment(key, input) {
   assessment = { key, status: 'loading', data: null };
   try {
     const data = await (key.startsWith('demo:') ? demo(key.slice(5)) : assess(input));
-    if (assessment.key === key) assessment = { key, status: 'done', data };
+    if (assessment.key === key) { assessment = { key, status: 'done', data }; rememberAssessment(); save(); }
   } catch { if (assessment.key === key) assessment = { key, status: 'error', data: null }; }
   if (state.step === 4 && assessment.key === key) { refreshDevInput(); return; }
   if (state.step >= 5 && assessment.key === key) {
@@ -385,7 +433,7 @@ function developerView(p, o, mainHeading) {
     <section class="rp-layer wi" aria-labelledby="wi-title"><p class="rp-layer-label" id="wi-title">What if · move a slider to see what would change</p><div id="wi-section">${(ensureWhatIf('result'), whatIfBody())}</div></section>
     ${d.homeowner_can_provide.length ? `<section class="next-question"><p class="eyebrow">Your next useful step</p><h2>A little more information can help.</h2><ul>${d.homeowner_can_provide.map(x => `<li>${escape(x)}</li>`).join('')}</ul><div class="next-step-actions"><button class="button primary" data-add-evidence>Add a bill or photo ${sparkle}</button><button class="back-button" data-go="4">Update my answers →</button></div><p class="small">Our AI helper can look for missing details. You’ll review them before your result changes.</p></section>` : ''}
     <details class="assumptions"><summary>What a professional needs to check</summary><ul>${d.technician_checks.map(x => `<li>${escape(x)}</li>`).join('')}</ul></details>
-    <div class="result-actions"><button class="button primary" data-go="6">Check and complete my details ${chevron}</button><button class="button secondary" data-download>Save my summary ↓</button><button class="button secondary" data-print>Print this assessment</button><button class="reset-button" data-reset>Start a new check</button></div>`;
+    <div class="result-actions"><button class="button secondary" data-go="0">Back to homepage</button><button class="button primary" data-go="6">Check and complete my details ${chevron}</button><button class="button secondary" data-download>Save my summary ↓</button><button class="button secondary" data-print>Print this assessment</button><button class="reset-button" data-reset>Start a new check</button></div>`;
 }
 // Customer view: the judgement only (colour, saving, one paragraph) and a few suggestions that fit the colour.
 function customerParagraph(p, o) {
@@ -473,7 +521,7 @@ function customerView(p, o) {
     ${savingChart(o, fuel)}
     ${followUpPanel()}
     <section class="cv-suggestions ${v.cls}"><h2>${s.title}</h2>${body}</section>
-    <div class="result-actions"><button class="button ${s.options ? 'secondary' : 'primary'}" data-go="6">Check and complete my details ${chevron}</button></div></div>`;
+    <div class="result-actions"><button class="button secondary" data-go="0">Back to homepage</button><button class="button ${s.options ? 'secondary' : 'primary'}" data-go="6">Check and complete my details ${chevron}</button></div></div>`;
 }
 // Confirm page: the customer approves, corrects or fills in every input the engine used.
 const CONFIRM = [
@@ -560,18 +608,20 @@ function ensureWhatIf(kind) {
   runScenarios(null);
 }
 async function runScenarios(values) {
+  const current = whatIf;
   const req = whatIf.req = (whatIf.req || 0) + 1;
   try {
     const data = await scenarios(whatIf.processed, values);
-    if (req !== whatIf.req) return;
+    if (current !== whatIf || req !== whatIf.req) return;
     const first = whatIf.status !== 'done';
     whatIf = { ...whatIf, status: 'done', data, values: { ...data.values } };
+    rememberAssessment();
     if (state.step !== WHAT_IF_STEP[whatIf.kind]) return;
     if (!first) updateWhatIf();
     else if (whatIf.kind === 'final') { render(); document.querySelector('#page-title')?.focus(); announce('Your final check is ready.'); }
     else document.querySelector('#wi-section').innerHTML = whatIfBody();
   } catch {
-    if (req !== whatIf.req) return;
+    if (current !== whatIf || req !== whatIf.req) return;
     whatIf.status = 'error';
     const section = state.step === WHAT_IF_STEP[whatIf.kind] && document.querySelector('#wi-section');
     if (section) section.innerHTML = whatIfBody();
@@ -620,15 +670,16 @@ function whatIfPage() {
   if (whatIf.status === 'error') return `<main id="main" class="result-main">${top}<section class="verdict-panel yellow"><div><h1 id="page-title" tabindex="-1">We couldn’t finish the check.</h1><div class="result-actions"><button class="button primary" data-go="6">Back to my details</button></div></div></section></main>`;
   return `<main id="main" class="result-main rp wi">${top}
     <section class="rp-layer"><p class="rp-layer-label">Final result · ${escape(whatIf.processed['02_radiator_check'].building_id)} · with your confirmed details and the values set below</p><div id="wi-section">${whatIfBody()}</div></section>
-    <div class="result-actions"><button class="reset-button" data-reset>Start a new check</button></div></main>`;
+    <div class="result-actions"><button class="button secondary" data-go="0">Back to homepage</button><button class="reset-button" data-reset>Start a new check</button></div></main>`;
 }
 let whatIfTimer;
 
 function render() {
+  rememberAssessment();
   document.documentElement.classList.toggle('larger-text', state.larger);
   document.querySelector('#text-size').setAttribute('aria-pressed', String(state.larger));
   document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
-  app.innerHTML = (state.step === 0 ? welcome() : state.step === 5 ? resultPage() : state.step === 6 ? confirmPage() : state.step === 7 ? whatIfPage() : formPage()) + `<dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">Start a new home check?</h2><p>This clears the answers in this tab. Save your summary first if you want to keep it.</p><div class="dialog-actions"><button class="button secondary" data-cancel-reset autofocus>Keep my answers</button><button class="button primary" data-confirm-reset>Start a new check</button></div></dialog>`;
+  app.innerHTML = (state.step === 0 ? welcome() : state.step === 5 ? resultPage() : state.step === 6 ? confirmPage() : state.step === 7 ? whatIfPage() : formPage()) + `<dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">Start a new home check?</h2><p>This clears the active answers and uploads. Completed results stay in your assessment history on the homepage.</p><div class="dialog-actions"><button class="button secondary" data-cancel-reset autofocus>Keep my answers</button><button class="button primary" data-confirm-reset>Start a new check</button></div></dialog>`;
   document.title = `${state.step === 0 ? 'Heat pump home check' : ({ 5: 'Your first assessment', 6: 'Confirm your details', 7: 'What if' })[state.step] || steps[state.step - 1]} · nuuEnergy`;
 }
 app.addEventListener('input', event => {
@@ -711,6 +762,16 @@ app.addEventListener('submit', event => {
 });
 app.addEventListener('click', async event => {
   const button = event.target.closest('button'); if (!button) return;
+  if (button.hasAttribute('data-open-check')) {
+    const entry = completedChecks.find(x => x.id === button.dataset.openCheck);
+    if (!entry) return;
+    resetActive();
+    const restored = JSON.parse(JSON.stringify(entry));
+    state = { ...state, ...restored.state }; assessment = restored.assessment;
+    whatIf = restored.whatIf || { processed: null };
+    setStep(state.step === 7 && restored.whatIf ? 7 : 5);
+    announce('Saved assessment opened.'); return;
+  }
   if (button.hasAttribute('data-start-ai') || button.hasAttribute('data-add-evidence')) {
     if (assessment.data?.follow_up?.id.startsWith('conflict:') && state.evidenceLedger) extraction = { status: 'done', result: state.evidenceLedger, error: '' };
     homeDetailsOpen = false; returnToReview = false; editSnapshot = null; setStep(1);
@@ -806,7 +867,7 @@ app.addEventListener('click', async event => {
   }
   if (button.hasAttribute('data-reset')) document.querySelector('#reset-dialog').showModal();
   if (button.hasAttribute('data-cancel-reset')) document.querySelector('#reset-dialog').close();
-  if (button.hasAttribute('data-confirm-reset')) { state.answers = empty(); state.sample = false; state.sampleAnswers = null; state.evidence = {}; state.evidenceReviews = {}; state.evidenceLedger = null; chosenFiles = []; uploadSave = null; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; returnToReview = false; setStep(0); announce('Your answers have been cleared.'); }
+  if (button.hasAttribute('data-confirm-reset')) { setStep(0); announce('Ready for a new check. Your completed assessment is in your history.'); }
   if (button.hasAttribute('data-print')) window.print();
   if (button.hasAttribute('data-download')) downloadSummary();
 });
@@ -837,7 +898,7 @@ function loadSample(id) {
   a.other_heat_source = /wood stove/i.test(sample.building_notes) ? 'yes' : 'unknown';
   a.solar_thermal = /solar thermal/i.test(sample.building_notes) ? 'yes' : 'unknown';
   a.building_notes = [sample.building_notes, sample.radiator_info].filter(Boolean).join('\n\n');
-  state.answers = a; state.sample = true; state.sampleAnswers = JSON.stringify(a); state.evidence = {}; state.evidenceReviews = {}; state.evidenceLedger = null; chosenFiles = []; uploadSave = null; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; setStep(4); announce(`Example home ${id} loaded. Review the answers before continuing.`);
+  resetActive(); state.answers = a; state.sample = true; state.sampleAnswers = JSON.stringify(a); setStep(4); announce(`Example home ${id} loaded. Review the answers before continuing.`);
 }
 async function loadSamples() {
   try {
@@ -873,5 +934,6 @@ function openDemo() {
 addedCount = reviewedEvidence().length;
 // A ?demo= link loads its example fresh: don't assess (and save) answers left over in this tab first.
 if (new URLSearchParams(location.search).get('demo')) state.step = 0;
+else if (!location.hash && state.step >= 5) { resetActive(); save(); }
 render(); loadSamples().then(openDemo);
 fetch('/api/ai-status').then(r => r.json()).then(status => { aiAvailable = status.available; if (state.step === 1 && extraction.status === 'idle' && !chosenFiles.length) render(); }).catch(() => {});

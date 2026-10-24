@@ -530,3 +530,14 @@ button:disabled { opacity: .6; cursor: default; }
 .extraction-metrics { color: var(--muted); font-size: .75rem; margin-top: 1rem; }
 .focused-question h2 { font-size: 1.25rem; }
 .focused-question p { font-size: .9rem; }
+
+/* Completed assessments on the homepage. */
+.assessment-history { grid-column: 1 / -1; border-top: 1px solid var(--line, #d9ded6); padding-top: 2rem; margin-top: 1rem; }
+.assessment-history > p { max-width: 65ch; }
+.history-group { background: #fffdf8; border: 1px solid #d9ded6; border-radius: 14px; margin-top: 1rem; padding: 1rem 1.25rem; }
+.history-group summary { cursor: pointer; font-weight: 650; overflow-wrap: anywhere; }
+.history-group summary span { font-weight: 400; margin-left: .6rem; }
+.history-entry { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; border-top: 1px solid #d9ded6; margin-top: 1rem; padding-top: 1rem; }
+.history-entry p { margin: .4rem 0; max-width: 65ch; }
+.history-entry button { flex-shrink: 0; }
+@media (max-width: 650px) { .history-entry { align-items: flex-start; flex-direction: column; } }
