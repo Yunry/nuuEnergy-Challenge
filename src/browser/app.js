@@ -136,7 +136,7 @@ function welcome() {
     : samples.length ? samples.map(b => `<button class="sample-button" data-sample="${escape(b.building_id)}"><strong>${escape(b.example_label || b.building_id)} · ${b.construction_year} home</strong><span>${b.floor_area_m2} m² · ${escape(labels.heat_distribution[b.heat_distribution] || b.heat_distribution)}${b.pipe_system === 'single-pipe' ? ' · single-pipe' : ''}</span>${chevron}</button>`).join('')
     : '<p>Loading example homes…</p>';
   return `<main id="main" class="welcome"><div class="welcome-copy"><p class="eyebrow"><span class="small-line"></span> A clearer next step for your home</p><h1 id="page-title" tabindex="-1">Could a heat pump work for <span>your home?</span></h1>
-      <p class="lead">Check your own home, or have a look at real example homes and a live demo first.</p></div>
+      <p class="lead">Check your own home, or have a look at real example homes and a live demo first.</p><button class="button primary start-button hero-start" data-start-ai>Check my home ${chevron}</button></div>
     <aside class="welcome-aside"><div class="illustration-card"><span class="illustration-label">A warmer home. A clearer picture.</span>${homeArt}<div class="illustration-caption"><span class="leaf-mark" aria-hidden="true">↗</span><p>A first step towards<br><strong>heating with less fossil fuel.</strong></p></div></div></aside>
     <section class="entrances" aria-label="Two ways to start">
       <article class="entrance"><p class="entrance-kicker">1 · Your home</p><h2>Help me check my home</h2>
