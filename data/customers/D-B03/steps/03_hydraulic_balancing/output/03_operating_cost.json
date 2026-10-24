@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1",
+  "building_id": "D-B03",
+  "step": "03_operating_cost",
+  "jaz": [
+    3.5,
+    3.5
+  ],
+  "cost_eur_per_year": {
+    "today": 6800,
+    "heat_pump": [
+      2615,
+      2615
+    ],
+    "saving": [
+      4185,
+      4185
+    ],
+    "note": null
+  },
+  "assumptions": [
+    "Heat pump also covers hot water, at the same JAZ as space heating"
+  ]
+}

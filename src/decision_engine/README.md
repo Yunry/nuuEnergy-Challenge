@@ -9,9 +9,11 @@ src/decision_engine/      one module per engine step, each with run(...) -> dict
   engine.py               runs the four steps in order: processed inputs -> outputs
   prepare.py              browser form answers (customer_input) -> processed inputs + reference data
   scenarios.py            what-if: fixed-rule assumptions for open inputs, pinned point runs, per-input sweeps
+  customer_steps.py       customer folder that grows per upload: facts applied, result + report saved per step
 scripts/serve.py          browser app + engine API (/api/assess, /api/scenarios, /api/demo, /api/samples, /api/evaluation)
 scripts/run_engine.py     reads data/demo/<id>/processed/, writes data/demo/<id>/output/
 scripts/evaluate.py       internal: engine on all demo customers vs. organizer labels
+scripts/build_demo_customer.py     data/customers/D-B03: B-03 plus three illustrative uploads, step by step
 scripts/plot_engine_schematic.py   docs/decision_engine_schematic.pdf
 tests/test_engine.py      python3 -m unittest discover -s tests -v
 ```

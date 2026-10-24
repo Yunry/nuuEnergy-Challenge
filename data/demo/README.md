@@ -7,8 +7,8 @@ Interface and field format: [../01_pipeline_and_interface.md](../01_pipeline_and
 demo/<customer>/
   raw/                     everything the customer gives us, unchanged (from the frontend)
     customer_input.json    form answers, official dataset field names
-    photos/                radiator / pipe / boiler photos
-                           (bills, free text etc. also go in raw/)
+    photos/                radiator / pipe / boiler photos added in the browser (git-ignored)
+    documents/             bills and other PDFs added in the browser (git-ignored)
   processed/               engine input after extraction + enrichment, one file per calculation step
     01a_heat_load_by_area.json
     01b_heat_load_by_consumption.json
@@ -35,5 +35,7 @@ Status:
 - Schematic of every step with its inputs and outputs, and the results for all customers:
   [../../docs/decision_engine_schematic.pdf](../../docs/decision_engine_schematic.pdf)
   (`python3 scripts/plot_engine_schematic.py`).
+
+`B-Live/` is the live demo customer, created step by step from http://127.0.0.1:4173/live.html and git-ignored; see [../customers/README.md](../customers/README.md).
 
 `data/raw/` stays the master copy of everything we collected and is not changed.

@@ -1,0 +1,74 @@
+{
+  "schema_version": "0.1",
+  "building_id": "D-B03",
+  "step": "01b_heat_load_by_consumption",
+  "depends_on": [],
+  "raw_inputs": [
+    {
+      "id": "customer_input",
+      "type": "json",
+      "ref": "data/demo/B-03/raw/customer_input.json"
+    }
+  ],
+  "fields": {
+    "annual_consumption_kwh": {
+      "value": 40000,
+      "source": "customer_input.annual_consumption_kwh",
+      "confidence": "high",
+      "evidence": "40000; consistent with 'approx. 4,000 litres per year' x 10 kWh/l"
+    },
+    "energy_carrier": {
+      "value": "oil",
+      "source": "customer_input.energy_carrier",
+      "confidence": "high",
+      "evidence": "oil"
+    },
+    "persons_in_household": {
+      "value": 2,
+      "source": "customer_input.persons_in_household",
+      "confidence": "high",
+      "evidence": "2"
+    },
+    "hot_water_via_heating": {
+      "value": true,
+      "source": "customer_input.hot_water_via_heating",
+      "confidence": "high",
+      "evidence": "true"
+    },
+    "other_heat_source": {
+      "value": null,
+      "source": "customer_input.building_notes",
+      "confidence": "medium",
+      "evidence": "none mentioned"
+    },
+    "solar_thermal": {
+      "value": false,
+      "source": "customer_input.building_notes",
+      "confidence": "medium",
+      "evidence": "none mentioned"
+    }
+  },
+  "reference_data": {
+    "boiler_efficiency": {
+      "value": 0.88,
+      "source": "official",
+      "confidence": "high",
+      "evidence": "Technical Guardrails 1b: useful heat ~ consumption x 0.88"
+    },
+    "hot_water_kwh_per_person": {
+      "value": 1000,
+      "source": "official",
+      "confidence": "high",
+      "evidence": "Technical Guardrails 1b: subtract approx. 1,000 kWh per person per year for boiler-supplied hot water"
+    },
+    "full_load_hours": {
+      "value": [
+        1800,
+        2100
+      ],
+      "source": "official",
+      "confidence": "medium",
+      "evidence": "Technical Guardrails 1b: approx. 2,000 full-load hours; 1,800-2,100 used as range (ours)"
+    }
+  }
+}

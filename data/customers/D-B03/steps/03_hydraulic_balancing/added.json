@@ -1,0 +1,27 @@
+{
+  "step": 3,
+  "label": "hydraulic_balancing",
+  "files": [
+    "raw/documents/hydraulic_balancing_protocol_2023.pdf"
+  ],
+  "facts": {
+    "valves_to_replace": {
+      "value": 0,
+      "confidence": "high",
+      "evidence": "All 15 thermostatic valves replaced and preset, hydraulic balancing done 03/2023",
+      "source_file": "hydraulic_balancing_protocol_2023.pdf"
+    },
+    "pipe_system": {
+      "value": "two-pipe",
+      "confidence": "high",
+      "evidence": "Protocol: two-pipe system (Zweirohrsystem)",
+      "source_file": "hydraulic_balancing_protocol_2023.pdf"
+    },
+    "flow_temperature_c": {
+      "value": 55,
+      "confidence": "medium",
+      "evidence": "Heating curve set to 55 °C flow at -12 °C outside",
+      "source_file": "hydraulic_balancing_protocol_2023.pdf"
+    }
+  }
+}

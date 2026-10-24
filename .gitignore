@@ -7,3 +7,11 @@ __pycache__/
 .env.local
 .env.*.local
 *.key
+
+# Customer uploads saved by the browser (personal documents): kept on this machine, never committed
+data/demo/C-*/
+data/demo/*/raw/documents/
+data/demo/*/raw/photos/*
+!data/demo/*/raw/photos/.gitkeep
+# Live demo customer: generated step by step from the browser (live.html), starts empty
+data/demo/B-Live/

@@ -1,0 +1,47 @@
+# Technician report · D-B03 · step 1 (floor_plan)
+
+**Verdict: YELLOW (unknown)** — A heat pump can very likely heat this house, but whether the existing radiators are big enough is still open. One side photo of a radiator would settle most of it.
+
+| Heat load | Water temperature needed | Heat pump cost | Saving |
+|---|---|---|---|
+| 15.8–18.4 kW | 50–84 °C | 2,615–3,269 €/a | 3,531–4,185 €/a |
+
+## Added in this step
+
+- file `raw/documents/floor_plan_top_floor.pdf`
+- unheated_area = 45 (high): “Floor plan p.1: top floor 45 m², marked 'not heated, not lived in'” — floor_plan_top_floor.pdf
+
+## Still uncertain: check on site
+
+- **Heat load taken from**: assumed average of both — Bill and house size agree: use their average.
+- **Heat demand per m² (W/m²)**: assumed 100 W/m² — Middle of the 80-120 W/m² band for this building age and renovation.
+- **Full-load hours per year**: assumed 2,000 h — Official approximation: about 2,000 full-load hours.
+- **Radiator type**: assumed type 22 — Unknown: type 22 (two panels), the most common panel radiator in German homes.
+- **Typical radiator length (height 600 mm)**: assumed 1,000 mm — Unknown: standard 600 × 1000 mm panel.
+
+## Reasons
+
+- positive: Two-pipe system: all radiators get water at the same temperature.
+- unknown: Radiator type unknown: the house runs with Type 33 at about 50-53 C, with Type 22 at about 58-62 C, with Type 11 at about 77-84 C.
+- action: 12 radiator valves need replacement anyway; a good moment for hydraulic balancing.
+- hint: 79-92 W/m2 is above 75 W/m2: better windows or insulation may be worth it.
+
+## Technician checks
+
+1. Exact heat load (DIN EN 12831)
+2. Room-by-room radiator sizing
+3. Electrical capacity and meter cabinet
+4. Outdoor unit placement, sound and permits
+
+## Homeowner can still provide
+
+- Side photo of one typical radiator, plus its height and width
+- Current flow temperature setting of the boiler, if known
+
+## Assumptions
+
+- Partially renovated, built before 1979: 80-120 W/m2 (no official row for 'partially')
+- Full-load hours 1800-2100 h (official approx. 2,000; range ours)
+- Radiator size unknown: assumed 600 x 1000 mm
+- Radiator output vs temperature: EN 442, n = 1.3, 10 K spread
+- Heat pump also covers hot water, at the same JAZ as space heating

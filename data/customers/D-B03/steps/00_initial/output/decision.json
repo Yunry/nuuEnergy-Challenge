@@ -1,0 +1,72 @@
+{
+  "schema_version": "0.1",
+  "building_id": "D-B03",
+  "verdict": "yellow",
+  "verdict_kind": "unknown",
+  "summary": "A heat pump can very likely heat this house, but whether the existing radiators are big enough is still open. One side photo of a radiator would settle most of it.",
+  "boundaries": [
+    {
+      "input": "radiator_rated_output_total_kw",
+      "flips_verdict": true,
+      "thresholds": [
+        {
+          "range": ">= 35.7",
+          "per_radiator": ">= 2.38",
+          "result": "green: runs at <= 55 C"
+        },
+        {
+          "range": "29.3-35.7",
+          "per_radiator": "1.95-2.38",
+          "result": "yellow: needs 55-60 C, higher running cost"
+        },
+        {
+          "range": "< 29.3",
+          "per_radiator": "< 1.95",
+          "result": "needs > 60 C: some radiators should be upgraded"
+        }
+      ],
+      "resolve_by": "homeowner",
+      "how": "Side photo of a typical radiator plus its height and width"
+    }
+  ],
+  "reasons": [
+    {
+      "type": "positive",
+      "text": "Two-pipe system: all radiators get water at the same temperature.",
+      "source": "pipe_system"
+    },
+    {
+      "type": "unknown",
+      "text": "Radiator type unknown: the house runs with Type 33 at about 50-53 C, with Type 22 at about 58-62 C, with Type 11 at about 77-84 C.",
+      "source": "radiator_type"
+    },
+    {
+      "type": "action",
+      "text": "12 radiator valves need replacement anyway; a good moment for hydraulic balancing.",
+      "source": "valves_to_replace"
+    },
+    {
+      "type": "hint",
+      "text": "79-92 W/m2 is above 75 W/m2: better windows or insulation may be worth it.",
+      "source": "heating_load_kw"
+    }
+  ],
+  "homeowner_can_provide": [
+    "Side photo of one typical radiator, plus its height and width",
+    "Current flow temperature setting of the boiler, if known"
+  ],
+  "technician_checks": [
+    "Exact heat load (DIN EN 12831)",
+    "Room-by-room radiator sizing",
+    "Electrical capacity and meter cabinet",
+    "Outdoor unit placement, sound and permits"
+  ],
+  "assumptions": [
+    "Unheated area of unknown size (top floor, size unknown): heated area 70-100 % of floor area",
+    "Partially renovated, built before 1979: 80-120 W/m2 (no official row for 'partially')",
+    "Full-load hours 1800-2100 h (official approx. 2,000; range ours)",
+    "Radiator size unknown: assumed 600 x 1000 mm",
+    "Radiator output vs temperature: EN 442, n = 1.3, 10 K spread",
+    "Heat pump also covers hot water, at the same JAZ as space heating"
+  ]
+}

@@ -1,5 +1,5 @@
 import { assess, demo, scenarios, toCustomerInput } from './assessment.js';
-import { extractFiles, applyFields, fieldLabels, validateFiles } from './extraction.js';
+import { extractFiles, applyFields, fieldLabels, uploadFiles, validateFiles } from './extraction.js';
 
 const app = document.querySelector('#app');
 const storageKey = 'nuu-home-check-v1';
@@ -11,7 +11,7 @@ try {
 } catch { /* Storage is optional; the flow still works in memory. */ }
 let errors = {}, returnToReview = false, editSnapshot = null, samples = [], sampleError = '';
 let extraction = { status: 'idle', result: null, error: '' }, aiAvailable = null, uploadGeneration = 0;
-let chosenFiles = [], homeDetailsOpen = false, addedCount = 0;
+let chosenFiles = [], homeDetailsOpen = false, addedCount = 0, uploadSave = null;
 const steps = ['Your home', 'Your heating', 'Your energy use', 'Check your answers'];
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const chevron = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>';
@@ -101,13 +101,14 @@ function uploadPanel() {
     ${addedCount ? `<div class="upload-success" id="upload-confirmed" tabindex="-1"><strong>✓ ${addedCount} ${addedCount === 1 ? 'detail added' : 'details added'} to your answers</strong><p>We’ll carry these through the check. You can change them at any time.</p><button type="submit" class="button primary">${returnToReview ? 'Back to my answers' : 'Continue to my heating'} ${chevron}</button></div>` : ''}
     ${aiAvailable === false ? '<p class="upload-unavailable" role="status">The AI helper is unavailable on this server. You can use the questions below.</p>' : ''}
     ${!result ? `${addedCount ? '<details class="add-more-files"><summary>Add another bill or photo</summary>' : ''}<div class="drop-zone" id="upload-drop-zone">
-      <input class="sr-only" id="evidence-files" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple aria-describedby="upload-formats" ${busy || aiAvailable === false ? 'disabled' : ''}>
+      <input class="sr-only" id="evidence-files" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple aria-describedby="upload-formats" ${busy ? 'disabled' : ''}>
       <label for="evidence-files"><span class="upload-arrow" aria-hidden="true">↑</span><strong>${chosenFiles.length ? 'Add or replace files' : 'Choose a bill or photo'}</strong><span>or drag files here</span></label>
       <p id="upload-formats">PDF, JPG, PNG or WebP · 3 files max · 10 MB total</p></div>
       ${chosenFiles.length ? `<ul class="chosen-files" aria-label="Selected files">${chosenFiles.map((f, i) => `<li><span class="file-kind" aria-hidden="true">${f.type === 'application/pdf' || /\.pdf$/i.test(f.name) ? 'PDF' : 'IMG'}</span><span><strong>${escape(f.name)}</strong><small>${formatNumber(f.size / 1024)} KB</small></span><button type="button" class="file-remove" data-remove-file="${i}" aria-label="Remove ${escape(f.name)}" ${busy ? 'disabled' : ''}>×</button></li>`).join('')}</ul>` : '<div class="upload-examples"><span>Useful files</span><p>Heating bill <b>·</b> Radiator photo <b>·</b> Property document</p></div>'}
+      ${uploadSave ? `<p class="upload-saved ${uploadSave.status}" role="status">${uploadSave.status === 'saving' ? 'Saving to your customer folder…' : uploadSave.status === 'saved' ? `✓ Saved to customer folder <strong>${escape(uploadSave.customerId)}</strong>: ${uploadSave.paths.map(x => `<code>${escape(x)}</code>`).join(', ')}` : `Could not save the files: ${escape(uploadSave.error)}`}</p>` : ''}
       <button type="button" class="button primary extract-button" data-extract ${busy || !chosenFiles.length || aiAvailable === false ? 'disabled' : ''}>${busy ? '<span class="reading-dot" aria-hidden="true"></span> Reading your files…' : `Find my home details ${sparkle}`}</button>
       ${busy ? '<p class="reading-status" role="status">Checking your files for heating and home details. This may take up to 90 seconds.</p><button type="button" class="back-button" data-cancel-extraction>Continue without waiting</button>' : ''}
-      <div class="upload-privacy"><p>Files are sent to OpenAI when you choose “Find my home details”. This app doesn’t save the originals.</p><details class="privacy-details"><summary>Before you upload</summary><p>Cover personal details such as your name, address and account number. A clear photo or the relevant pages of your bill are enough.</p></details></div>${addedCount ? '</details>' : ''}` : ''}
+      <div class="upload-privacy"><p>Your files are saved to your customer folder on this server. They are sent to OpenAI only when you choose “Find my home details”.</p><details class="privacy-details"><summary>Before you upload</summary><p>Cover personal details such as your name, address and account number. A clear photo or the relevant pages of your bill are enough.</p></details></div>${addedCount ? '</details>' : ''}` : ''}
     ${extraction.error ? `<div role="alert" class="upload-error"><strong>Let’s try another way.</strong><p>${escape(extraction.error)}</p><button type="button" class="back-button" data-manual-details>Enter my details instead →</button></div>` : ''}
     ${result ? `<div class="extraction-review" id="extraction-review" tabindex="-1"><div class="review-heading"><h3>${facts.length ? `We found ${facts.length} ${facts.length === 1 ? 'detail' : 'details'}. Take a quick look.` : 'We couldn’t read enough details.'}</h3><p>${facts.length ? 'Tick the details you want to use. We’ve left uncertain readings and changes to your existing answers for you to check.' : 'Try a clearer image, or continue with the questions below.'}</p></div>
       ${facts.map(([key, f]) => {
@@ -295,6 +296,7 @@ function resultPage() {
     <section class="rp-layer" aria-label="How it was calculated"><p class="rp-layer-label">4 steps</p><ol class="rp-steps">${stepCards(p, o).map((x, i) => `<li class="rp-card rp-step"><p class="rp-num">Step ${i + 1}</p><h2>${x.title}</h2><p>${escape(x.sentence)}</p><code class="rp-eq">${escape(x.equation)}</code><p class="rp-result">${escape(x.result)}</p></li>`).join('')}</ol></section>
     <div class="rp-links" aria-hidden="true"><span>↑</span><span>↑</span><span>↑</span><span>↑</span></div>
     <section class="rp-layer" aria-label="Inputs and evidence"><p class="rp-layer-label">Inputs & evidence</p><div class="rp-inputs">${INPUTS.map(col => `<ul class="rp-card">${col.map(x => inputItem(p, x)).join('')}</ul>`).join('')}</div></section>
+    <section class="rp-layer wi" aria-labelledby="wi-title"><p class="rp-layer-label" id="wi-title">What if · move a slider to see what would change</p><div id="wi-section">${(ensureWhatIf('result'), whatIfBody())}</div></section>
     ${d.homeowner_can_provide.length ? `<section class="next-question"><p class="eyebrow">Your next useful step</p><h2>A little more information can help.</h2><ul>${d.homeowner_can_provide.map(x => `<li>${escape(x)}</li>`).join('')}</ul><div class="next-step-actions"><button class="button primary" data-add-evidence>Add a bill or photo ${sparkle}</button><button class="back-button" data-go="4">Update my answers →</button></div><p class="small">Our AI helper can look for missing details. You’ll review them before your result changes.</p></section>` : ''}
     <details class="assumptions"><summary>What a professional needs to check</summary><ul>${d.technician_checks.map(x => `<li>${escape(x)}</li>`).join('')}</ul></details>
     <div class="result-actions"><button class="button primary" data-go="6">Check and complete my details ${chevron}</button><button class="button secondary" data-download>Save my summary ↓</button><button class="button secondary" data-print>Print this assessment</button><button class="reset-button" data-reset>Start a new check</button></div></main>`;
@@ -366,13 +368,20 @@ function confirmedProcessed() {
   return p;
 }
 
-// What-if page: every input still open gets a fixed-rule assumption and a slider; the slider track is coloured by
-// the verdict the engine gives at each position (others held at their current values).
+// What-if: every input still open gets a fixed-rule assumption and a slider; the slider track is coloured by the
+// verdict the engine gives at each position (others held at their current values). Shown on the result page with
+// the data as assessed ("result"), and on the final page with the customer's confirmed data ("final").
 let whatIf = { processed: null };
+const WHAT_IF_STEP = { result: 5, final: 7 };
 const VERDICT_COLOR = { green: '#8fb07f', yellow: '#e6c75f', red: '#d9826a' };
 function trackGradient(sweep) {
   const n = sweep.length;
   return `linear-gradient(to right, ${sweep.map((r, i) => `${VERDICT_COLOR[r.verdict]} ${Math.max(0, (i - 0.5) / (n - 1) * 100).toFixed(1)}% ${Math.min(100, (i + 0.5) / (n - 1) * 100).toFixed(1)}%`).join(', ')})`;
+}
+function ensureWhatIf(kind) {
+  if (whatIf.kind === kind && whatIf.processed) return;
+  whatIf = { kind, processed: kind === 'final' ? confirmedProcessed() : assessment.data.processed, status: 'loading' };
+  runScenarios(null);
 }
 async function runScenarios(values) {
   const req = whatIf.req = (whatIf.req || 0) + 1;
@@ -381,13 +390,21 @@ async function runScenarios(values) {
     if (req !== whatIf.req) return;
     const first = whatIf.status !== 'done';
     whatIf = { ...whatIf, status: 'done', data, values: { ...data.values } };
-    if (state.step !== 7) return;
-    if (first) { render(); document.querySelector('#page-title')?.focus(); announce('Your final check is ready.'); } else updateWhatIf();
-  } catch { if (req === whatIf.req) { whatIf.status = 'error'; if (state.step === 7) render(); } }
+    if (state.step !== WHAT_IF_STEP[whatIf.kind]) return;
+    if (!first) updateWhatIf();
+    else if (whatIf.kind === 'final') { render(); document.querySelector('#page-title')?.focus(); announce('Your final check is ready.'); }
+    else document.querySelector('#wi-section').innerHTML = whatIfBody();
+  } catch {
+    if (req !== whatIf.req) return;
+    whatIf.status = 'error';
+    const section = state.step === WHAT_IF_STEP[whatIf.kind] && document.querySelector('#wi-section');
+    if (section) section.innerHTML = whatIfBody();
+  }
 }
 function whatIfResult(data) {
   const r = data.result, full = data.full.summary, v = verdictMeta(r, true);
-  return `<div class="rp-top"><div class="rp-card rp-verdict ${v.cls}"><p class="eyebrow">${v.eyebrow}</p><h1 id="page-title" tabindex="-1">${v.title}</h1>
+  const heading = whatIf.kind === 'final' ? `<h1 id="page-title" tabindex="-1">${v.title}</h1>` : `<h2>${v.title}</h2>`;
+  return `<div class="rp-top"><div class="rp-card rp-verdict ${v.cls}"><p class="eyebrow">${v.eyebrow}</p>${heading}
       <p>All open options together: <strong>${escape(full.verdict)}</strong>${full.saving_eur ? `, saving ${euros(full.saving_eur)} a year` : ''}.</p></div>
     <div class="rp-card"><dl class="wi-numbers"><div><dt>Heat load</dt><dd>${span(r.load_kw, ' kW')}</dd></div><div><dt>Water temperature</dt><dd>${span(r.flow_c, ' °C')}</dd></div>
       <div><dt>Heat pump cost</dt><dd>${euros(r.heat_pump_eur)}<span> / year</span></dd></div><div><dt>Saving</dt><dd class="wi-saving">${euros(r.saving_eur)}<span> / year</span></dd></div></dl></div></div>`;
@@ -401,12 +418,10 @@ function updateWhatIf() {
     if (note) note.textContent = values[p.key] === p.assumed ? 'in use' : `you chose ${p.labels[p.values.indexOf(values[p.key])]}`;
   }
 }
-function whatIfPage() {
-  if (!ensureAssessment()) return resultPage();
-  if (!whatIf.processed) { whatIf = { processed: confirmedProcessed(), status: 'loading' }; runScenarios(null); }
-  const top = '<div class="result-topline"><button class="back-button" data-go="6">← Back to my details</button><span>WHAT IF</span></div>';
-  if (whatIf.status === 'loading') return `<main id="main" class="result-main">${top}<section class="verdict-panel" aria-busy="true"><div><h1 id="page-title" tabindex="-1">Working out every option…</h1></div></section></main>`;
-  if (whatIf.status === 'error') return `<main id="main" class="result-main">${top}<section class="verdict-panel yellow"><div><h1 id="page-title" tabindex="-1">We couldn’t finish the check.</h1><div class="result-actions"><button class="button primary" data-go="6">Back to my details</button></div></div></section></main>`;
+// Result with the slider values, the sliders, and the assumption log. Lives in #wi-section on either page.
+function whatIfBody() {
+  if (whatIf.status === 'loading') return '<p class="wi-status" aria-busy="true">Working out every option…</p>';
+  if (whatIf.status === 'error') return '<p class="wi-status">The what-if options could not be calculated.</p>';
   const { data, values } = whatIf;
   const sliders = data.params.map(p => {
     const i = p.values.indexOf(values[p.key]);
@@ -415,11 +430,20 @@ function whatIfPage() {
       <div class="wi-scale"><span>${escape(p.labels[0])}</span><span>${escape(p.labels[p.labels.length - 1])}</span></div></div>`;
   }).join('');
   const log = data.params.map(p => `<li><strong>${escape(p.label)}: ${escape(p.labels[p.values.indexOf(p.assumed)])}</strong> — ${escape(p.rule)} <span class="wi-log-state" id="wi-log-${p.key}">${values[p.key] === p.assumed ? 'in use' : `you chose ${escape(p.labels[p.values.indexOf(values[p.key])])}`}</span></li>`).join('');
+  if (!data.params.length) return `<div id="wi-result">${whatIfResult(data)}</div><p>Nothing is open any more: this is the final result.</p>`;
+  return `<div id="wi-result">${whatIfResult(data)}</div>
+    <p class="wi-legend"><span class="green"></span>green: ≤ 55 °C <span class="yellow"></span>yellow: 55–60 °C <span class="red"></span>red: &gt; 60 °C, at each slider position</p>
+    <div class="wi-params">${sliders}</div><button type="button" class="button secondary" data-wi-reset>Back to the assumptions</button>
+    <p class="rp-layer-label wi-log-label">Assumption log · fixed rules</p><ol class="wi-log">${log}</ol>`;
+}
+function whatIfPage() {
+  if (!ensureAssessment()) return resultPage();
+  ensureWhatIf('final');
+  const top = '<div class="result-topline"><button class="back-button" data-go="6">← Back to my details</button><span>WHAT IF</span></div>';
+  if (whatIf.status === 'loading') return `<main id="main" class="result-main">${top}<section class="verdict-panel" aria-busy="true"><div><h1 id="page-title" tabindex="-1">Working out every option…</h1></div></section></main>`;
+  if (whatIf.status === 'error') return `<main id="main" class="result-main">${top}<section class="verdict-panel yellow"><div><h1 id="page-title" tabindex="-1">We couldn’t finish the check.</h1><div class="result-actions"><button class="button primary" data-go="6">Back to my details</button></div></div></section></main>`;
   return `<main id="main" class="result-main rp wi">${top}
-    <section class="rp-layer"><p class="rp-layer-label">Final result · ${escape(whatIf.processed['02_radiator_check'].building_id)} · with the values set below</p><div id="wi-result">${whatIfResult(data)}</div></section>
-    <section class="rp-layer"><p class="rp-layer-label">Still open · move a slider to see what would change</p>
-      ${data.params.length ? `<p class="wi-legend"><span class="green"></span>green: ≤ 55 °C <span class="yellow"></span>yellow: 55–60 °C <span class="red"></span>red: &gt; 60 °C, at each slider position</p><div class="wi-params">${sliders}</div><button type="button" class="button secondary" data-wi-reset>Back to the assumptions</button>` : '<p>Nothing is open any more: this is your final result.</p>'}</section>
-    ${data.params.length ? `<section class="rp-layer"><p class="rp-layer-label">Assumption log · fixed rules</p><ol class="wi-log">${log}</ol></section>` : ''}
+    <section class="rp-layer"><p class="rp-layer-label">Final result · ${escape(whatIf.processed['02_radiator_check'].building_id)} · with your confirmed details and the values set below</p><div id="wi-section">${whatIfBody()}</div></section>
     <div class="result-actions"><button class="reset-button" data-reset>Start a new check</button></div></main>`;
 }
 let whatIfTimer;
@@ -460,9 +484,26 @@ app.addEventListener('change', event => {
     whatIf = { processed: null }; save();
   }
 });
+// Every home that adds files gets its own customer folder: an example home keeps its ID (B-03), a new home gets one.
+function customerId() {
+  if (!/^(B-\d+|C-\d{8}-[0-9a-f]{4})$/.test(state.answers.building_id)) {
+    const day = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+    state.answers.building_id = `C-${day}-${Math.floor(Math.random() * 0x10000).toString(16).padStart(4, '0')}`;
+    save();
+  }
+  return state.answers.building_id;
+}
+async function saveFiles(files) {
+  const id = customerId();
+  uploadSave = { status: 'saving', customerId: id };
+  try { uploadSave = { status: 'saved', customerId: id, paths: (await uploadFiles(id, files)).saved }; }
+  catch (error) { uploadSave = { status: 'error', customerId: id, error: error.message }; }
+  if (state.step === 1) render();
+  announce(uploadSave.status === 'saved' ? `Files saved to customer folder ${id}.` : `The files could not be saved. ${uploadSave.error}`);
+}
 function chooseFiles(files) {
-  if (extraction.status === 'loading' || aiAvailable === false) return;
-  try { validateFiles(files); chosenFiles = files; extraction = { status: 'idle', result: null, error: '' }; }
+  if (extraction.status === 'loading') return;
+  try { validateFiles(files); chosenFiles = files; extraction = { status: 'idle', result: null, error: '' }; saveFiles(files); }
   catch (error) { extraction = { status: 'error', result: null, error: error.message }; }
   render(); document.querySelector(extraction.error ? '#evidence-files' : '[data-extract]')?.focus();
   announce(extraction.error || `${chosenFiles.length} ${chosenFiles.length === 1 ? 'file ready' : 'files ready'}. Choose Find my home details to continue.`);
@@ -559,7 +600,7 @@ app.addEventListener('click', async event => {
   }
   if (button.hasAttribute('data-reset')) document.querySelector('#reset-dialog').showModal();
   if (button.hasAttribute('data-cancel-reset')) document.querySelector('#reset-dialog').close();
-  if (button.hasAttribute('data-confirm-reset')) { state.answers = empty(); state.sample = false; state.sampleAnswers = null; state.evidence = {}; chosenFiles = []; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; returnToReview = false; setStep(0); announce('Your answers have been cleared.'); }
+  if (button.hasAttribute('data-confirm-reset')) { state.answers = empty(); state.sample = false; state.sampleAnswers = null; state.evidence = {}; chosenFiles = []; uploadSave = null; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; returnToReview = false; setStep(0); announce('Your answers have been cleared.'); }
   if (button.hasAttribute('data-print')) window.print();
   if (button.hasAttribute('data-download')) downloadSummary();
 });
@@ -583,7 +624,7 @@ function loadSample(id) {
   a.other_heat_source = /wood stove/i.test(sample.building_notes) ? 'yes' : 'unknown';
   a.solar_thermal = /solar thermal/i.test(sample.building_notes) ? 'yes' : 'unknown';
   a.building_notes = [sample.building_notes, sample.radiator_info].filter(Boolean).join('\n\n');
-  state.answers = a; state.sample = true; state.sampleAnswers = JSON.stringify(a); state.evidence = {}; chosenFiles = []; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; setStep(4); announce(`Example home ${id} loaded. Review the answers before continuing.`);
+  state.answers = a; state.sample = true; state.sampleAnswers = JSON.stringify(a); state.evidence = {}; chosenFiles = []; uploadSave = null; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; setStep(4); announce(`Example home ${id} loaded. Review the answers before continuing.`);
 }
 async function loadSamples() {
   try {

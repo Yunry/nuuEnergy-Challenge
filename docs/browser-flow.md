@@ -24,7 +24,7 @@ Sample homes are the demo customers' raw input (`data/demo/<id>/raw/customer_inp
 
 ### Confirm and what-if (after the first result)
 
-**Check and complete my details** opens a confirm page listing every input the engine used, with its evidence. The customer ticks what is right, corrects what isn't and fills in open values; confirmed values become `confidence: "high"` (`source: "homeowner.confirmed"`), so their uncertainty disappears. **Finalise my check** sends the confirmed inputs to `POST /api/scenarios` (`src/decision_engine/scenarios.py`): every input that is still uncertain gets a fixed-rule assumption (shown in the assumption log, e.g. radiator type unknown → type 22, the most common panel radiator) and a slider over its possible values. The engine runs with every uncertain input pinned to one value, so the result is a single point; each slider track is coloured by the verdict at every position (others held), and moving a slider recalculates the result live.
+**Check and complete my details** opens a confirm page listing every input the engine used, with its evidence. The customer ticks what is right, corrects what isn't and fills in open values; confirmed values become `confidence: "high"` (`source: "homeowner.confirmed"`), so their uncertainty disappears. The same what-if section (sliders and assumption log) already appears at the bottom of the first result, using the data as assessed. **Finalise my check** sends the confirmed inputs to `POST /api/scenarios` (`src/decision_engine/scenarios.py`): every input that is still uncertain gets a fixed-rule assumption (shown in the assumption log, e.g. radiator type unknown → type 22, the most common panel radiator) and a slider over its possible values. The engine runs with every uncertain input pinned to one value, so the result is a single point; each slider track is coloured by the verdict at every position (others held), and moving a slider recalculates the result live.
 
 ### Important modelling limitations
 
@@ -44,7 +44,7 @@ Radiator ratings per type are placeholders until checked against manufacturer da
 - All questions can be left unknown; no countdown or timeout; corrections and back navigation preserve answers.
 - No animation-dependent interaction; respects reduced-motion preferences.
 - Confirmation dialog before clearing; no unnecessary collection of names, addresses or contact details.
-- Answers and confirmed extraction evidence are stored in sessionStorage for this tab; assessment answers are sent to the local Python server. Files chosen for AI extraction are sent through the local server to OpenAI only when Extract is clicked. If storage is unavailable the in-memory flow still works. No third-party fonts, analytics or scripts.
+- Answers and confirmed extraction evidence are stored in sessionStorage for this tab; assessment answers are sent to the local Python server. Files the customer adds are saved unchanged to their customer folder on this server as soon as they are chosen (see below); they are sent through the local server to OpenAI only when Extract is clicked. If storage is unavailable the in-memory flow still works. No third-party fonts, analytics or scripts.
 
 W3C guidance used: https://www.w3.org/WAI/older-users/ and https://www.w3.org/WAI/tutorials/forms/ . These are design choices, not a claim of audited WCAG conformance. A real screen-reader pass and sessions with target users are still needed, including a measured completion time.
 
@@ -73,8 +73,15 @@ or whether the upstream account has credits.
 On **Your home**, choose up to three PDF/JPEG/PNG/WebP files (10 MB combined) and click
 **Extract details**. PDF text/page images and photos go to OpenAI Responses, with a strict
 JSON schema matching the assessment fields. The request sets `store: false`; OpenAI's own
-API data-handling policies still apply. Original files are not written to disk or sessionStorage
-by the app. The UI explicitly discloses the destination before upload.
+API data-handling policies still apply. The UI explicitly discloses both destinations before upload.
+
+**Saving uploads to the customer folder.** As soon as files are chosen (with or without AI), the browser
+sends them to `POST /api/upload`, which applies the same format, size and content checks as extraction and
+writes them unchanged to `data/demo/<customer>/raw/documents/` (PDF) or `raw/photos/` (images), named
+`<timestamp>_<original name>`. An example home uses its own folder (e.g. `B-03`); a new home gets a customer
+ID on its first upload (`C-<yyyymmdd>-<4 hex>`, shown on screen and used as `building_id`), and its folder is
+created with `raw/`, `processed/` and `output/`. Uploads are git-ignored (`data/demo/C-*/`,
+`raw/documents/`, `raw/photos/*`) because bills and photos are personal documents.
 
 Each non-null field shows its source filename, evidence and confidence. Only high-confidence fields without an existing answer start selected. Medium/low-confidence
 fields and fields that would overwrite existing answers start unchecked. Choose facts to use, then

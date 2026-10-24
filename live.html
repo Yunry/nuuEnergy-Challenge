@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Live demo · nuuEnergy</title>
+  <link rel="stylesheet" href="/src/browser/styles.css">
+  <script type="module" src="/src/browser/live.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/"><span>nuu</span>Energy<span class="brand-dot" aria-hidden="true">.</span></a>
+    <span class="header-description">Live demo · upload step by step</span>
+  </header>
+  <main id="main" class="eval-main live">
+    <h1>Live demo customer B-Live</h1>
+    <p class="intro">Starts empty. <strong>Start</strong> saves B-03’s form input as step 0 (yellow). Then upload one document at a time,
+      for example the demo files in <code>data/customers/D-B03/raw/documents/</code>. Each upload is saved as the next step in
+      <code>data/demo/B-Live/</code>: the file, the facts read from it, engine input and output, open inputs and a technician report.</p>
+    <div id="live"><p>Loading…</p></div>
+  </main>
+  <p id="announcement" class="sr-only" role="status" aria-live="polite"></p>
+  <footer class="site-footer"><span>nuuEnergy · Hackathon prototype</span><span>Demo documents are illustrative, not real customer data.</span></footer>
+</body>
+</html>

@@ -1,0 +1,74 @@
+{
+  "schema_version": "0.1",
+  "building_id": "D-B03",
+  "step": "02_radiator_check",
+  "depends_on": [
+    "output/01_heat_load.json"
+  ],
+  "raw_inputs": [
+    {
+      "id": "customer_input",
+      "type": "json",
+      "ref": "data/demo/B-03/raw/customer_input.json"
+    }
+  ],
+  "fields": {
+    "heat_distribution": {
+      "value": "radiators",
+      "source": "customer_input.heat_distribution",
+      "confidence": "high",
+      "evidence": "radiators"
+    },
+    "pipe_system": {
+      "value": "two-pipe",
+      "source": "upload:hydraulic_balancing_protocol_2023.pdf",
+      "confidence": "high",
+      "evidence": "Protocol: two-pipe system (Zweirohrsystem)"
+    },
+    "flow_temperature_c": {
+      "value": 55,
+      "source": "upload:hydraulic_balancing_protocol_2023.pdf",
+      "confidence": "medium",
+      "evidence": "Heating curve set to 55 °C flow at -12 °C outside"
+    },
+    "radiator_count": {
+      "value": 15,
+      "source": "customer_input.radiator_info",
+      "confidence": "high",
+      "evidence": "15 radiators"
+    },
+    "radiator_type": {
+      "value": "22",
+      "source": "upload:radiator_measurement.pdf",
+      "confidence": "high",
+      "evidence": "Two panels with fins between them, photo and tape measure"
+    },
+    "radiator_size_mm": {
+      "value": [
+        600,
+        1400
+      ],
+      "source": "upload:radiator_measurement.pdf",
+      "confidence": "high",
+      "evidence": "Height 600 mm, width 1400 mm; all 15 radiators the same model"
+    },
+    "valves_to_replace": {
+      "value": 0,
+      "source": "upload:hydraulic_balancing_protocol_2023.pdf",
+      "confidence": "high",
+      "evidence": "All 15 thermostatic valves replaced and preset, hydraulic balancing done 03/2023"
+    }
+  },
+  "reference_data": {
+    "radiator_rated_kw_each": {
+      "value": {
+        "11": 1.0,
+        "22": 1.8,
+        "33": 2.6
+      },
+      "source": "own_table",
+      "confidence": "low",
+      "evidence": "PLACEHOLDER for 600x1000 mm at 75/65/20 C, to be verified from manufacturer catalogs"
+    }
+  }
+}

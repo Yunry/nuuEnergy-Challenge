@@ -1,4 +1,5 @@
-// Raw uploads stay in memory only. Reviewed facts join the normal editable form.
+// Uploads are saved unchanged to the customer's folder (data/demo/<id>/raw/) as soon as they are chosen;
+// they go to the AI only on request. Reviewed facts join the normal editable form.
 export const fieldLabels = {
   construction_year: 'Year built', floor_area_m2: 'Heated floor area (m²)',
   annual_consumption_kwh: 'Heating fuel used (kWh)', persons_in_household: 'People at home',
@@ -60,4 +61,14 @@ export function applyFields(answers, fields, selected) {
     next.amount = ''; next.unit = 'kwh'; next.consumption_full_year = 'unknown';
   }
   return next;
+}
+
+// Save the chosen files to the customer's raw folder on this server. Returns {customer_id, saved: [paths]}.
+export async function uploadFiles(customerId, files) {
+  validateFiles(files);
+  const payload = await Promise.all(files.map(filePayload));
+  const response = await fetch('/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer_id: customerId, files: payload }) });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || 'The files could not be saved.');
+  return result;
 }
