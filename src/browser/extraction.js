@@ -10,6 +10,10 @@ export const fieldLabels = {
   other_heat_source: 'Another heat source', solar_thermal: 'Solar hot water', building_notes: 'Documented observations',
 };
 const payloadCache = new WeakMap();
+// Some file pickers/drop sources omit MIME types, including the supplied .jpeg photos.
+export function fileType(file) {
+  return file.type || ({ pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[file.name.split('.').pop().toLowerCase()] || '');
+}
 export function filePayload(file) {
   if (!payloadCache.has(file)) payloadCache.set(file, readPayload(file));
   return payloadCache.get(file);
@@ -18,14 +22,14 @@ function readPayload(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('The file could not be read. Please choose it again.'));
-    reader.onload = () => resolve({ name: file.name, type: file.type || (/\.pdf$/i.test(file.name) ? 'application/pdf' : ''), data: String(reader.result).split(',')[1] });
+    reader.onload = () => resolve({ name: file.name, type: fileType(file), data: String(reader.result).split(',')[1] });
     reader.readAsDataURL(file);
   });
 }
 export function validateFiles(files) {
   if (!files.length || files.length > 3) throw new Error('Choose between 1 and 3 PDF or image files.');
   if (files.reduce((n, f) => n + f.size, 0) > 10 * 1024 * 1024) throw new Error('Files must total no more than 10 MB.');
-  if (files.some(f => !['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(f.type) && !(f.type === '' && /\.pdf$/i.test(f.name)))) throw new Error('Use PDF, JPG, PNG or WebP files. For a HEIC photo, export it as JPG first.');
+  if (files.some(f => !['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(fileType(f)))) throw new Error('Use PDF, JPG, PNG or WebP files. For a HEIC photo, export it as JPG first.');
   if (new Set(files.map(f => f.name)).size !== files.length) throw new Error('These files have the same name. Rename one so you can tell their sources apart.');
 }
 // context {customer_id, questionnaire}: the server sends the questionnaire and the customer's saved files to the LLM

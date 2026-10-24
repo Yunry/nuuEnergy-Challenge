@@ -1,6 +1,6 @@
 import { resolveReview, clearUnknownAnswers } from './evidence.js';
 import { assess, demo, scenarios, toCustomerInput } from './assessment.js';
-import { extractFiles, applyFields, fieldLabels, uploadFiles, validateFiles } from './extraction.js';
+import { extractFiles, applyFields, fieldLabels, uploadFiles, validateFiles, fileType } from './extraction.js';
 import { customerResult, emptyRes } from './customerresult.js';
 import { emptyQc, questionHtml, progressBar, nextId, prevId, visible, answerText, TITLES, CONSUMPTION_RANGES, RADIATOR_RANGES, RENOVATION } from './quickcheck.js';
 
@@ -136,10 +136,10 @@ function progress() {
 }
 function welcome() {
   const homes = sampleError ? `<p role="status">${escape(sampleError)}</p><button class="button secondary" data-retry>Try loading examples again</button>`
-    : samples.length ? samples.map(b => `<button class="sample-button" data-sample="${escape(b.building_id)}"><strong>${escape(b.building_id)} · ${b.construction_year} home</strong><span>${b.floor_area_m2} m² · ${escape(labels.heat_distribution[b.heat_distribution] || b.heat_distribution)}${b.pipe_system === 'single-pipe' ? ' · single-pipe' : ''}</span>${chevron}</button>`).join('')
+    : samples.length ? samples.map(b => `<button class="sample-button" data-sample="${escape(b.building_id)}"><strong>${escape(b.example_label || b.building_id)} · ${b.construction_year} home</strong><span>${b.floor_area_m2} m² · ${escape(labels.heat_distribution[b.heat_distribution] || b.heat_distribution)}${b.pipe_system === 'single-pipe' ? ' · single-pipe' : ''}</span>${chevron}</button>`).join('')
     : '<p>Loading example homes…</p>';
   return `<main id="main" class="welcome"><div class="welcome-copy"><p class="eyebrow"><span class="small-line"></span> A clearer next step for your home</p><h1 id="page-title" tabindex="-1">Could a heat pump work for <span>your home?</span></h1>
-      <p class="lead">Check your own home, or have a look at real example homes and a live demo first.</p></div>
+      <p class="lead">Check your own home, or have a look at real example homes and a live demo first.</p><button class="button primary start-button hero-start" data-start-ai>Check my home ${chevron}</button></div>
     <aside class="welcome-aside"><div class="illustration-card"><span class="illustration-label">A warmer home. A clearer picture.</span>${homeArt}<div class="illustration-caption"><span class="leaf-mark" aria-hidden="true">↗</span><p>A first step towards<br><strong>heating with less fossil fuel.</strong></p></div></div></aside>
     <section class="entrances" aria-label="Two ways to start">
       <article class="entrance"><p class="entrance-kicker">1 · Your home</p><h2>Help me check my home</h2>
@@ -147,7 +147,7 @@ function welcome() {
         <ul class="welcome-benefits"><li>${tick}No technical knowledge needed</li><li>${tick}It’s fine if you don’t know every answer</li><li>${tick}About 3 minutes · no sign-up</li></ul>
         <button class="button primary start-button" data-start-ai>Help me check my home ${chevron}</button></article>
       <article class="entrance"><p class="entrance-kicker">2 · Just have a look</p><h2>Example homes and live demo</h2>
-        <p>Five real, anonymised homes from the challenge, or watch the result change as documents are uploaded.</p>
+        <p>Five real, anonymised homes, a saved photo assessment, or a live demo where each upload updates the result.</p>
         <div class="sample-list">${homes}</div>
         <a class="button secondary live-entrance" href="/live.html?fresh=1">Live demo: B-05 + radiator photos ${chevron}</a></article>
     </section>${assessmentHistory()}</main>`;
@@ -551,15 +551,20 @@ let crReading = false;
 async function crReadDocs(file) {
   const r = state.qc.res ||= emptyRes();
   try { validateFiles([file]); } catch (error) { r.error = error.message; render(); return; }
-  r.docs = 'reading'; r.error = ''; crReading = true; render(); saveFiles([file]);
+  r.docs = 'reading'; r.error = ''; crReading = true; render();
   try {
+    await saveFiles([file]);
+    if (r !== state.qc.res) return;
+    if (uploadSave?.status === 'error') throw new Error(uploadSave.error);
     const result = await extractFiles([file], { customer_id: customerId(), questionnaire: toCustomerInput(values()) });
+    if (r !== state.qc.res) return;
     const f = result.fields || {}, area = f.floor_area_m2?.value, year = f.construction_year?.value;
     if (!area && !year) throw new Error('We could not find the size or the year on this page. Try a clearer photo.');
     r.docsFields = { fields: f, text: [area ? `${formatNumber(area)} m²` : '', year ? `built in ${year}` : ''].filter(Boolean).join(', ') };
     r.docs = 'review';
-  } catch (error) { r.docs = 'pending'; r.error = error.message || 'The document could not be read.'; }
-  crReading = false; save(); if (state.step === 5) render();
+  } catch (error) { if (r !== state.qc.res) return; r.docs = 'pending'; r.error = error.message || 'The document could not be read.'; }
+  finally { crReading = false; }
+  save(); if (state.step === 5) render();
 }
 function customerView(p, o) {
   const d = o.decision, cost = o['03_operating_cost'].cost_eur_per_year, v = verdictMeta(d, Boolean(o['02_radiator_check'].flow_temp_c.by_case));
@@ -832,7 +837,7 @@ function qcRange(kind, raw) {
 // Phones often call every photo image.jpg; give each upload its own name so sources stay apart.
 function qcRename(file, base) {
   const ext = (/\.[a-z0-9]+$/i.exec(file.name) || [''])[0] || ({ 'application/pdf': '.pdf', 'image/png': '.png', 'image/webp': '.webp' }[file.type] || '.jpg');
-  return new File([file], base + ext.toLowerCase(), { type: file.type });
+  return new File([file], base + ext.toLowerCase(), { type: fileType(file) });
 }
 const carrierText = v => ({ gas: 'natural gas', oil: 'heating oil', lpg: 'LPG', electric: 'electricity', district: 'district heating' }[v] || 'your fuel');
 const typeText = v => ({ 11: 'one-panel radiator (type 11)', 22: 'two-panel radiator (type 22)', 33: 'three-panel radiator (type 33)' }[v]);
@@ -964,7 +969,8 @@ function crTakeFile(kind, file) {
 // A quick-check file (bill, or a radiator photo: valve / side) from the file button or dropped on its zone.
 function qcTakeFile(kind, file) {
   if (!file) return;
-  const ok = file.type.startsWith('image/') || (kind === 'bill' && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)));
+  const mime = fileType(file);
+  const ok = ['image/jpeg', 'image/png', 'image/webp'].includes(mime) || (kind === 'bill' && mime === 'application/pdf');
   if (!ok) { state.qc.error = kind === 'bill' ? 'Please use a photo or a PDF of the bill.' : 'Please use a photo (JPG, PNG or WebP).'; render(); return; }
   if (kind === 'bill') { qcReadBill(qcRename(file, 'heating-bill')); return; }
   radFiles[kind] = qcRename(file, `radiator-${kind}`); state.qc.photos[kind] = file.name; state.qc.error = ''; render();
@@ -1168,13 +1174,13 @@ function loadSample(id) {
   const a = empty();
   for (const key of Object.keys(a)) if (sample[key] !== undefined && sample[key] !== null) a[key] = String(sample[key]);
   if (/LPG/i.test(sample.energy_carrier_detail || '')) a.energy_carrier = 'lpg';
-  a.amount = String(sample.annual_consumption_kwh); a.unit = 'kwh'; a.consumption_full_year = 'yes';
+  a.amount = sample.annual_consumption_kwh == null ? '' : String(sample.annual_consumption_kwh); a.unit = 'kwh'; a.consumption_full_year = sample.consumption_full_year === false ? 'no' : 'yes';
   a.hot_water_via_heating = sample.hot_water_via_heating === true ? 'yes' : sample.hot_water_via_heating === false ? 'no' : 'unknown';
-  a.radiator_count = (/(\d+)\s+radiators?/i.exec(sample.radiator_info || '') || [])[1] || '';
-  a.other_heat_source = /wood stove/i.test(sample.building_notes) ? 'yes' : 'unknown';
-  a.solar_thermal = /solar thermal/i.test(sample.building_notes) ? 'yes' : 'unknown';
+  a.radiator_count = String(sample.radiator_count ?? (/(\d+)\s+radiators?/i.exec(sample.radiator_info || '') || [])[1] ?? '');
+  a.other_heat_source = typeof sample.other_heat_source === 'boolean' ? (sample.other_heat_source ? 'yes' : 'no') : /wood stove/i.test(sample.building_notes) ? 'yes' : 'unknown';
+  a.solar_thermal = typeof sample.solar_thermal === 'boolean' ? (sample.solar_thermal ? 'yes' : 'no') : /solar thermal/i.test(sample.building_notes) ? 'yes' : 'unknown';
   a.building_notes = [sample.building_notes, sample.radiator_info].filter(Boolean).join('\n\n');
-  resetActive(); state.answers = a; state.sample = true; state.sampleAnswers = JSON.stringify(a); setStep(4); announce(`Example home ${id} loaded. Review the answers before continuing.`);
+  resetActive(); state.answers = a; state.evidence = sample.example_evidence || {}; state.sample = true; state.sampleAnswers = JSON.stringify(a); setStep(4); announce(`Example home ${id} loaded. Review the answers before continuing.`);
 }
 async function loadSamples() {
   try {

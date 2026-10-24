@@ -6,7 +6,7 @@ usage: python3 scripts/serve.py        -> http://127.0.0.1:4173   (PORT=4174 pyt
   POST /api/assess      customer_input -> {processed, outputs}
   POST /api/scenarios   {processed, values} -> assumptions, what-if result and per-input sweeps
   POST /api/upload      {customer_id, files} -> files saved to data/demo/<customer_id>/raw/{photos,documents}/
-  GET  /api/samples     demo customers' raw input (no development labels)
+  GET  /api/samples     five challenge homes plus completed saved examples (no development labels)
   GET  /api/demo/<id>   {processed, outputs} for a demo customer's hand-extracted processed/ files
   GET  /api/evaluation  internal competition evaluation, shown at /evaluation.html
   GET  /api/customer/<id>/files, /api/customer/<id>/raw/<path>   list / open a customer's raw inputs (developer view)
@@ -49,16 +49,38 @@ ai_extract.load_env(ROOT / '.env')
 ALLOWED = re.compile(r"^/(index\.html|evaluation\.html|live\.html|src/browser/[A-Za-z0-9_.-]+\.(js|css))$")
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8"}
 MAX_BODY = 100_000
+SAVED_CUSTOMERS = ROOT / 'data' / 'customers'
+
+
+def customer_folder(customer_id):
+    return (SAVED_CUSTOMERS if re.fullmatch(r'D-B\d+', customer_id) else DEMO) / customer_id
 
 
 def samples():
-    """The five challenge homes (B-01 ... B-05); the live workspace B-Live is not an example."""
-    return [json.loads(p.read_text()) for p in sorted(DEMO.glob("B-[0-9]*/raw/customer_input.json"))]
+    """Challenge homes plus completed saved examples, excluding the mutable live workspace."""
+    homes = [json.loads(p.read_text()) for p in sorted(DEMO.glob("B-[0-9]*/raw/customer_input.json"))]
+    for path in sorted(SAVED_CUSTOMERS.glob('D-B[0-9]*/raw/customer_input.json')):
+        folder = path.parent.parent
+        if not customer_steps.step_dirs(folder):
+            continue
+        home = json.loads(path.read_text())
+        home['building_id'] = folder.name
+        home['example_label'] = f'{folder.name[2:]} with reviewed photos (saved demo)'
+        home['example_evidence'] = {}
+        # The review screen and result describe the same latest saved evidence.
+        for step in customer_steps.latest_processed(folder).values():
+            for key, fact in step['fields'].items():
+                if key in intake.QUESTIONNAIRE_KEYS and fact['value'] is not None:
+                    home[key] = fact['value']
+                    if fact.get('source', '').startswith('upload:'):
+                        home['example_evidence'][key] = {**fact, 'source_file': fact['source'].removeprefix('upload:')}
+        homes.append(home)
+    return homes
 
 
 def demo(building_id):
     """A demo customer's processed files; for a customer collected step by step (B-Live), its latest step."""
-    folder = DEMO / building_id
+    folder = customer_folder(building_id)
     steps = customer_steps.latest_processed(folder) if (folder / "steps").is_dir() else load_steps(building_id)
     return {"processed": steps, "outputs": engine.run(building_id, steps)}
 
@@ -97,7 +119,7 @@ def save_uploads(body, demo=DEMO):
     return {"customer_id": customer_id, "saved": saved, "duplicates": duplicates}
 
 
-# Live demo: data/demo/B-Live starts empty; Start adds B-03's input as step 00, every upload adds the next step.
+# Live demo: Start adds B-05's questionnaire as step 00, every upload adds the next step.
 LIVE = DEMO / "B-Live"
 REGISTER = ROOT / "data" / "customer" / "demo" / "extraction_register.json"  # readings of the demo upload files
 
@@ -214,13 +236,13 @@ def assess(customer_input):
     return result
 
 
-FOLDER_ID = r"B-\d+|B-Live|C-\d{8}-[0-9a-f]{4}"
+FOLDER_ID = r"B-\d+|D-B\d+|B-Live|C-\d{8}-[0-9a-f]{4}"
 RAW_TYPES = {**FILE_TYPES, ".json": "application/json; charset=utf-8"}
 
 
 def raw_inputs(customer_id):
     """Everything in the customer's raw folder (questionnaire, uploads, extraction), for the developer view."""
-    raw = DEMO / customer_id / "raw"
+    raw = customer_folder(customer_id) / "raw"
     return [{"path": str(p.relative_to(raw)), "name": p.name, "kind": p.suffix.lower().lstrip("."), "size": p.stat().st_size}
             for p in sorted(raw.rglob("*")) if p.is_file() and p.suffix.lower() in RAW_TYPES]
 
@@ -285,13 +307,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.api(raw_inputs, match[1])
         match = re.fullmatch(rf"/api/customer/({FOLDER_ID})/raw/((?:documents/|photos/)?[A-Za-z0-9._-]+)", path)
         if match:
-            raw = DEMO / match[1] / "raw"
+            raw = customer_folder(match[1]) / "raw"
             file = raw / match[2]
             if file.is_file() and file.suffix.lower() in RAW_TYPES and file.resolve().parent in (raw.resolve(), (raw / "documents").resolve(), (raw / "photos").resolve()):
                 return self.send(200, file.read_bytes(), RAW_TYPES[file.suffix.lower()])
             return self.send(404, b"Not found")
-        match = re.fullmatch(r"/api/demo/(B-\d+|B-Live)", path)
-        if match and (any((DEMO / match[1] / "processed").glob("*.json")) or (DEMO / match[1] / "steps").is_dir()):
+        match = re.fullmatch(r"/api/demo/(B-\d+|D-B\d+|B-Live)", path)
+        if match and (any((customer_folder(match[1]) / "processed").glob("*.json")) or customer_steps.step_dirs(customer_folder(match[1]))):
             return self.api(demo, match[1])
         path = "/index.html" if path == "/" else path
         if not ALLOWED.match(path):

@@ -105,3 +105,5 @@ input::placeholder { color: #a1a1a6; }
 .rp-verdict.yellow, .cv-verdict.yellow { background: #fff4d6; }
 .rp-verdict.red, .cv-verdict.red { background: #fde4e4; }
 .rp-verdict, .cv-verdict { border: 0 !important; }
+
+.hero-start { margin-top: 1.4rem; min-height: 56px; padding-inline: 2rem; font-size: 1.1rem; }

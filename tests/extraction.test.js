@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveReview, clearUnknownAnswers } from '../src/browser/evidence.js';
-import { applyFields, validateFiles } from '../src/browser/extraction.js';
+import { applyFields, validateFiles, fileType, filePayload } from '../src/browser/extraction.js';
 const field = value => ({ value });
 test('consumption clears the old period and uses kWh without another conversion', () => {
   const next = applyFields({ amount: '2000', unit: 'litres', consumption_full_year: 'yes' }, { annual_consumption_kwh: field(18000) }, ['annual_consumption_kwh']);
@@ -31,6 +31,20 @@ test('invalid uploads are caught before sending a request', () => {
   assert.throws(() => validateFiles([pdf, pdf]), /same name/);
   assert.throws(() => validateFiles([{ ...pdf, size: 11 * 1024 * 1024 }]), /10 MB/);
   assert.throws(() => validateFiles([{ name: 'photo.heic', type: 'image/heic', size: 1024 }]), /export it as JPG/);
+});
+
+test('photos and PDFs with missing MIME types survive validation and payload encoding', async () => {
+  const original = globalThis.FileReader;
+  globalThis.FileReader = class { readAsDataURL() { this.result = 'data:application/octet-stream;base64,dGVzdA=='; this.onload(); } };
+  try {
+    for (const [name, type] of [['photo.JPG', 'image/jpeg'], ['photo.jpeg', 'image/jpeg'], ['photo.png', 'image/png'], ['photo.webp', 'image/webp'], ['bill.pdf', 'application/pdf']]) {
+      const file = { name, type: '', size: 4 };
+      validateFiles([file]);
+      assert.equal(fileType(file), type);
+      assert.deepEqual(await filePayload(file), { name, type, data: 'dGVzdA==' });
+    }
+    assert.throws(() => validateFiles([{ name: 'photo.jpg', type: 'text/html', size: 4 }]), /Use PDF/);
+  } finally { globalThis.FileReader = original; }
 });
 
 const reading = (id, field, value, file_id) => ({ id, field, value, file_id, source_file: file_id + '.pdf', confidence: 'high', evidence: 'Documented' });

@@ -134,6 +134,31 @@ class LocalHTTP(unittest.TestCase):
                 self.assertEqual(len(result['processed']), 4)
         self.assertEqual(self.request('/api/demo/B-99')[0], 404)
 
+    def test_completed_photo_example_loads_latest_evidence_and_original_photos(self):
+        status, body = self.request('/api/samples')
+        self.assertEqual(status, 200)
+        homes = json.loads(body)
+        self.assertTrue({'B-01', 'B-02', 'B-03', 'B-04', 'B-05', 'D-B05'} <= {h['building_id'] for h in homes})
+        for home in homes:
+            self.assertNotIn('expected_verdict', home)
+            self.assertNotIn('reference_heating_load_kw', home)
+        saved = next(h for h in homes if h['building_id'] == 'D-B05')
+        self.assertEqual(saved['radiator_type'], '22')
+        self.assertEqual(saved['example_evidence']['pipe_system']['confidence'], 'medium')
+        status, body = self.request('/api/demo/D-B05')
+        self.assertEqual(status, 200)
+        result = json.loads(body)
+        self.assertEqual(result['outputs']['02_radiator_check']['flow_temp_c']['required'], [42, 61])
+        self.assertEqual(result['processed']['02_radiator_check']['fields']['heat_distribution']['value'], 'mixed')
+        status, body = self.request('/api/customer/D-B05/files')
+        self.assertEqual(status, 200)
+        photos = [f for f in json.loads(body) if f['kind'] == 'jpeg']
+        self.assertEqual(len(photos), 2)
+        for photo in photos:
+            status, body = self.request('/api/customer/D-B05/raw/' + photo['path'])
+            self.assertEqual(status, 200)
+            self.assertEqual(body, (serve.SAVED_CUSTOMERS / 'D-B05' / 'raw' / photo['path']).read_bytes())
+
     def test_http_upload_to_assessment_and_private_files(self):
         with patch.object(ai, 'extract', return_value=extracted(energy_carrier='gas')):
             status, body = self.request('/api/extract', upload())
