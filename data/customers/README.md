@@ -17,23 +17,28 @@ customers/<id>/
   timeline.json, timeline.md       one row per step: verdict, load, water temperature, saving, open inputs
 ```
 
-## Demo: D-B03
+## Demo: D-B03 (saved version of the live demo)
 
-Starts from B-03's input and adds ONE **illustrative** document (made up for the demo, not real customer data),
-an installer's heating check report. See [D-B03/timeline.md](D-B03/timeline.md):
+Starts from B-03's questionnaire and adds the demo files from `data/customer/demo/`, read via
+`data/customer/demo/extraction_register.json` (stands in for AI extraction, so the demo is repeatable).
+See [D-B03/timeline.md](D-B03/timeline.md):
 
 | Step | Upload | Result |
 |---|---|---|
-| 0 | first form input (B-03) | **yellow**, uncertain: water temperature 50–84 °C depending on the unknown radiators; 6 open inputs |
-| 1 | `heating_check_report.pdf`: top floor 45 m² unheated, 15 × type 22 radiators 600 × 1400 mm, two-pipe, valves replaced, 55 °C setting | **green** for every remaining option: 51–54 °C, saving €4,185 a year; 3 open model settings, none changes the verdict; nothing left to ask the homeowner |
+| 0 | questionnaire (B-03 answers) | **yellow**, uncertain: 50–84 °C depending on the unknown radiators |
+| 1 | `energieausweis_b03_hamburg_1970_oel.pdf`: oil, 40,000 kWh/a (3-year mean), 1970, 200 m² | still **yellow**: the certificate says nothing about the radiators; asks for a radiator photo |
+| 2 | `05_zweirohr-vermutet_kompakt.jpeg`, a clear radiator photo: type 22, two-pipe, size estimated (no scale, illustrative) | **green, approved**: 51–54 °C, saving €4,185 a year; the 4 open inputs cannot change the verdict |
+
+With the unclear photo `07_unklar_bad-multiblock.jpeg` (towel radiator on a valve multi-block) nothing can be read,
+so the result stays yellow.
 
 Rebuild: `python3 scripts/build_demo_customer.py`
 
 ## Live demo: data/demo/B-Live
 
-To show the steps live, open http://127.0.0.1:4173/live.html (server: `python3 scripts/serve.py`).
-`data/demo/B-Live/` starts empty (git-ignored). **Start** saves B-03's input as step 0, then each document you upload
-(for the demo: `D-B03/raw/documents/heating_check_report.pdf`) becomes the next step in `data/demo/B-Live/steps/`,
-with the same files as above. The demo document is recognised by its content and its facts are applied
-(a stand-in for AI extraction); any other file is saved and logged as a step without new facts.
-`/?demo=B-Live` opens the full result page and what-if for the latest step. **Reset** empties the folder.
+Welcome page → **Just have a look** → **Live demo** opens http://127.0.0.1:4173/live.html?fresh=1: an empty workspace
+(`data/demo/B-Live/`, git-ignored) with B-03's stored questionnaire and no documents. Upload the PDF, then photo 05
+(approved) or 07 (stays uncertain). Each upload becomes a step in `data/demo/B-Live/steps/` with the file, the JSON read
+from it, the new result and a technician report. Demo files are recognised by content via the register; any other file
+goes to the real AI extraction when `OPENAI_API_KEY` is set (`.env`). `/?demo=B-Live` opens the full result and
+what-if for the latest step.

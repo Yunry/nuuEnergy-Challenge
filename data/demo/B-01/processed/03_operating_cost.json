@@ -34,11 +34,10 @@
   },
   "reference_data": {
     "fuel_price_eur_per_kwh": {
-      "value": null,
-      "source": "own_table.lpg",
-      "confidence": null,
-      "evidence": "no official LPG price; not priced as natural gas (open question to organizers)",
-      "official": false
+      "value": 0.11,
+      "source": "assumption",
+      "confidence": "low",
+      "evidence": "No official LPG price: the natural-gas price 0.11 EUR/kWh is used as an assumption (LPG usually costs more, so the real saving is likely higher)"
     },
     "hp_electricity_price_eur_per_kwh": {
       "value": 0.26,

@@ -45,6 +45,8 @@ def run(step_input, radiator_check):
     consumption = f["annual_consumption_kwh"]["value"] if as_range(f["annual_consumption_kwh"]) else None
     price = ref["fuel_price_eur_per_kwh"]["value"]
     today = None if consumption is None or price is None else consumption * price
+    if today is not None and ref["fuel_price_eur_per_kwh"]["source"] == "assumption":
+        assumptions.append(ref["fuel_price_eur_per_kwh"]["evidence"])
     if consumption is not None and price is None:
         no_price = f"no official price for '{f['energy_carrier']['value']}': today's cost not computed"
         note = no_price if note is None else f"{note}; {no_price}"

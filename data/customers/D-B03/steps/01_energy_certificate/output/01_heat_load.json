@@ -4,8 +4,8 @@
   "step": "01_heat_load",
   "inputs_as_ranges": {
     "heated_area_m2": [
-      155,
-      155
+      140,
+      200
     ],
     "full_load_hours": [
       1800,
@@ -14,8 +14,8 @@
   },
   "heating_load_kw": {
     "by_area": [
-      12.4,
-      18.6
+      11.2,
+      24.0
     ],
     "by_consumption": [
       15.8,
@@ -32,6 +32,7 @@
     ]
   },
   "assumptions": [
+    "Unheated area of unknown size (top floor, size unknown): heated area 70-100 % of floor area",
     "Partially renovated, built before 1979: 80-120 W/m2 (no official row for 'partially')",
     "Full-load hours 1800-2100 h (official approx. 2,000; range ours)"
   ]

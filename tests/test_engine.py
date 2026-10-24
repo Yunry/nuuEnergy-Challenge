@@ -48,10 +48,10 @@ class Engine(unittest.TestCase):
         self.assertIsNone(o["01_heat_load"]["heating_load_kw"]["by_consumption"])
         self.assertIsNone(o["03_operating_cost"]["cost_eur_per_year"]["today"])
 
-    def test_lpg_is_not_priced_as_natural_gas(self):
-        cost = assess(energy_carrier="lpg")["03_operating_cost"]["cost_eur_per_year"]
-        self.assertIsNone(cost["today"])
-        self.assertIn("no official price", cost["note"])
+    def test_lpg_is_priced_like_natural_gas_as_a_labelled_assumption(self):
+        o = assess(energy_carrier="lpg")["03_operating_cost"]
+        self.assertEqual(o["cost_eur_per_year"]["today"], assess()["03_operating_cost"]["cost_eur_per_year"]["today"])
+        self.assertTrue(any("No official LPG price" in a for a in o["assumptions"]))
 
     def test_single_pipe_prevents_green(self):
         o = assess(heat_distribution="radiators", radiator_count=10, radiator_type="33", pipe_system="single-pipe")

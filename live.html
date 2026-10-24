@@ -11,15 +11,14 @@
 <body>
   <header class="site-header">
     <a class="brand" href="/"><span>nuu</span>Energy<span class="brand-dot" aria-hidden="true">.</span></a>
-    <span class="header-description">Live demo · upload step by step</span>
+    <span class="header-description">Live demo</span>
   </header>
   <main id="main" class="eval-main live">
-    <h1>Live demo customer B-Live</h1>
-    <p class="intro">Starts empty. <strong>Start</strong> saves B-03’s form input as step 0: yellow, the radiators are still uncertain.
-      Then upload <strong>one</strong> file, the installer’s heating check report
-      <code>data/customers/D-B03/raw/documents/heating_check_report.pdf</code>: it settles the open questions and the result
-      turns green for every remaining option. Each upload is saved as the next step in <code>data/demo/B-Live/</code>: the file,
-      the facts read from it, engine input and output, open inputs and a technician report.</p>
+    <h1>Live demo: upload step by step</h1>
+    <p class="intro">A customer workspace (<code>data/demo/B-Live/</code>) that starts with the stored questionnaire (B-03’s answers)
+      and no documents. Upload the energy certificate PDF: the result is possible but not yet certain, and it asks for a radiator
+      photo. Then upload a radiator photo: a clear one (05) settles it and the result is approved; an unclear one (07) leaves it open.
+      Each upload is saved as a step with the file, the JSON read from it, the new result and a technician report.</p>
     <div id="live"><p>Loading…</p></div>
   </main>
   <p id="announcement" class="sr-only" role="status" aria-live="polite"></p>

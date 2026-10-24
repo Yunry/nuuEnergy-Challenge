@@ -264,6 +264,18 @@ dialog::backdrop { background: #162b23aa; }
   .rp-links { display: none; } .rp-step:not(:last-child)::after { content: "↓"; right: auto; left: 50%; top: auto; bottom: -1rem; }
   .rp-bar { grid-template-columns: 5.5rem 1fr auto; }
 }
+/* Welcome: two entrances */
+.entrances { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.4rem; border-top: 1px solid var(--line); padding-top: 1.6rem; }
+.entrance { background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 1.5rem 1.6rem; display: flex; flex-direction: column; }
+.entrance h2 { font-size: 1.5rem; margin-bottom: .5rem; }
+.entrance > p { color: var(--muted); font-size: .95rem; }
+.entrance-kicker { font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; color: var(--accent); margin: 0 0 .3rem; }
+.entrance .start-button { align-self: flex-start; margin-top: auto; }
+.entrance .manual-start { align-self: flex-start; margin-top: .6rem; }
+.entrance .sample-list { border: 1px solid var(--line); border-radius: 8px; padding: 0 .8rem; margin-bottom: 1rem; }
+.entrance .sample-list .sample-button:first-child { border-top: 0; }
+.live-entrance { align-self: flex-start; margin-top: auto; }
+@media (max-width: 760px) { .entrances { grid-template-columns: 1fr; } }
 /* View switch (header) and the split result page */
 .view-switch { margin-left: auto; display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .view-switch button { border: 0; background: transparent; font-size: .8rem; min-height: 48px; padding: .4rem .75rem; white-space: nowrap; }
@@ -510,6 +522,8 @@ button:disabled { opacity: .6; cursor: default; }
 .live-grid h3 { font-size: 1rem; margin: 0 0 .5rem; } .live-grid h4 { font-size: .85rem; margin: .8rem 0 .3rem; }
 .live-grid li, .live-grid p { font-size: .85rem; }
 .live-facts { list-style: none; padding: 0; }
+.live-json { font-size: .72rem; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: .6rem; overflow-x: auto; max-height: 22rem; margin: .4rem 0 0; }
+.live-next { border-top: 4px solid #e6c75f; } .live-next.green { border-top-color: #8fb07f; } .live-next.red { border-top-color: #d9826a; }
 @media (max-width: 900px) { .live-grid { grid-template-columns: 1fr; } }
 /* Evidence remains visible across uploads; disagreements require an explicit choice. */
 .evidence-conflicts { border: 1px solid #c7a15e; background: #fff9e9; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; }

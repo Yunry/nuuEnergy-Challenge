@@ -48,7 +48,8 @@ MAX_BODY = 100_000
 
 
 def samples():
-    return [json.loads(p.read_text()) for p in sorted(DEMO.glob("B-*/raw/customer_input.json"))]
+    """The five challenge homes (B-01 ... B-05); the live workspace B-Live is not an example."""
+    return [json.loads(p.read_text()) for p in sorted(DEMO.glob("B-[0-9]*/raw/customer_input.json"))]
 
 
 def demo(building_id):
@@ -94,20 +95,29 @@ def save_uploads(body, demo=DEMO):
 
 # Live demo: data/demo/B-Live starts empty; Start adds B-03's input as step 00, every upload adds the next step.
 LIVE = DEMO / "B-Live"
-REGISTER = ROOT / "data" / "customers"  # documents whose facts are known (the D-B03 demo documents)
+REGISTER = ROOT / "data" / "customer" / "demo" / "extraction_register.json"  # readings of the demo upload files
 
 
 def known_facts(name, data, register=REGISTER):
-    """Facts for a known demo document (same bytes as a file under data/customers/*/raw/), as extraction would return them.
-    Stands in for AI extraction in the live demo; an unknown file gives no facts."""
+    """(facts, note) for a demo file (data/customer/demo), by content; (None, None) for any other file.
+    Stands in for AI extraction so the live demo is repeatable."""
     digest = hashlib.sha256(data).hexdigest()
-    for added_path in sorted(register.glob("*/steps/*/added.json")):
-        added, folder = json.loads(added_path.read_text()), added_path.parents[2]
-        for f in added["files"]:
-            p = folder / f
-            if p.is_file() and hashlib.sha256(p.read_bytes()).hexdigest() == digest:
-                return {k: {**v, "source_file": name} for k, v in added["facts"].items()}
-    return {}
+    for entry in json.loads(Path(register).read_text())["files"] if Path(register).is_file() else []:
+        if entry["sha256"] == digest:
+            return {k: {**v, "source_file": name} for k, v in entry["facts"].items()}, entry["note"]
+    return None, None
+
+
+def read_file(name, mime, data, register=REGISTER):
+    """Facts from one uploaded file: the demo register if it is a demo file, otherwise the AI (if configured)."""
+    facts, note = known_facts(name, data, register)
+    if facts is not None:
+        return facts, f"{name}: {note} (read from the demo register)"
+    if not ai_extract.configured():
+        return {}, f"{name}: not a demo file and AI extraction is not configured, so no facts were read."
+    result = ai_extract.extract({"files": [{"name": name, "type": mime, "data": base64.b64encode(data).decode()}]})
+    facts = {k: f for k, f in result["fields"].items() if f["value"] is not None and f["confidence"] in ("high", "medium")}
+    return facts, f"{name}: read by AI ({os.environ.get('OPENAI_MODEL', 'gpt-4.1-mini')}); low-confidence readings are left out."
 
 
 def live_state(folder=LIVE):
@@ -124,7 +134,7 @@ def live_state(folder=LIVE):
 
 def live_start(folder=LIVE):
     customer_input = {**json.loads((DEMO / "B-03" / "raw" / "customer_input.json").read_text()), "building_id": folder.name}
-    customer_steps.start(folder, customer_input, load_steps("B-03"))
+    customer_steps.start(folder, customer_input, load_steps("B-03"), label="questionnaire")
     return live_state(folder)
 
 
@@ -139,13 +149,15 @@ def live_upload(body, folder=LIVE, register=REGISTER):
         raise ai_extract.ExtractionError("Start the live demo first.", 409)
     ai_extract.validate_files(body)
     with tempfile.TemporaryDirectory() as tmp:
-        paths, facts = [], {}
+        paths, facts, notes = [], {}, []
         for f in body["files"]:
             data, path = base64.b64decode(f["data"]), Path(tmp) / safe_name(f["name"])
             path.write_bytes(data)
             paths.append(path)
-            facts.update(known_facts(path.name, data, register))
-        customer_steps.add_upload(folder, paths[0].stem[:40], paths, facts)
+            read, note = read_file(path.name, f["type"], data, register)
+            facts.update(read)
+            notes.append(note)
+        customer_steps.add_upload(folder, paths[0].stem[:40], paths, facts, notes)
     return live_state(folder)
 
 

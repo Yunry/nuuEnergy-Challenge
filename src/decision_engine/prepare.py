@@ -23,6 +23,8 @@ OFFICIAL = {
 FUEL_PRICE = {
     "gas": {"value": 0.11, "source": "official", "confidence": "high", "evidence": "Technical Guardrails 3: natural gas 0.11 EUR/kWh"},
     "oil": {"value": 0.17, "source": "official", "confidence": "high", "evidence": "Technical Guardrails 3: heating oil 1.70 EUR/litre (~17 ct/kWh)"},
+    # no official LPG price: priced like natural gas, labelled as an assumption (agreed proxy)
+    "lpg": {"value": 0.11, "source": "assumption", "confidence": "low", "evidence": "No official LPG price: the natural-gas price 0.11 EUR/kWh is used as an assumption (LPG usually costs more, so the real saving is likely higher)"},
 }
 NO_PRICE = {"value": None, "source": "official", "confidence": None, "evidence": "no official price for this energy carrier"}
 

@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import ai_extract  # noqa: E402
 from serve import known_facts, live_reset, live_start, live_state, live_upload, save_uploads  # noqa: E402
 
-DEMO_DOCS = Path(__file__).resolve().parents[1] / "data" / "customers" / "D-B03" / "raw" / "documents"
+DEMO_DOCS = Path(__file__).resolve().parents[1] / "data" / "customer" / "demo"  # the live-demo upload files
 
 PDF = b"%PDF-1.4\n% test bill\n"
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
@@ -61,6 +61,9 @@ class SaveUploads(unittest.TestCase):
 
 
 class LiveDemo(unittest.TestCase):
+    """The demo story: questionnaire -> certificate PDF (still uncertain) -> radiator photo: clear 05 approves, unclear 07 not."""
+    PDF_NAME, CLEAR, UNCLEAR = "energieausweis_b03_hamburg_1970_oel.pdf", "05_zweirohr-vermutet_kompakt.jpeg", "07_unklar_bad-multiblock.jpeg"
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.folder = Path(self.tmp.name) / "B-Live"
@@ -69,26 +72,36 @@ class LiveDemo(unittest.TestCase):
         self.tmp.cleanup()
 
     def upload_doc(self, name):
-        return live_upload(upload("B-Live", (name, "application/pdf", (DEMO_DOCS / name).read_bytes())), self.folder)
+        mime = "application/pdf" if name.endswith(".pdf") else "image/jpeg"
+        return live_upload(upload("B-Live", (name, mime, (DEMO_DOCS / name).read_bytes())), self.folder)
 
-    def test_starts_empty_then_each_upload_is_the_next_step(self):
+    def test_certificate_then_clear_photo_approves(self):
         self.assertFalse(live_state(self.folder)["started"])
         with self.assertRaises(ai_extract.ExtractionError):
-            self.upload_doc("heating_check_report.pdf")  # not started yet
+            self.upload_doc(self.PDF_NAME)  # not started yet
         self.assertEqual(live_start(self.folder)["timeline"][0]["verdict"], "yellow")
-        state = self.upload_doc("heating_check_report.pdf")  # one upload settles it
-        self.assertEqual([r["verdict"] for r in state["timeline"]], ["yellow", "green"])
-        self.assertEqual(state["latest"]["decision"]["homeowner_can_provide"], [])
-        self.assertTrue((self.folder / "raw" / "documents" / "heating_check_report.pdf").exists())
+        state = self.upload_doc(self.PDF_NAME)
+        self.assertEqual(state["latest"]["decision"]["verdict"], "yellow")  # radiators still unknown
+        self.assertIn("construction_year", state["latest"]["added"]["facts"])
+        state = self.upload_doc(self.CLEAR)
+        self.assertEqual([r["verdict"] for r in state["timeline"]], ["yellow", "yellow", "green"])
+        self.assertTrue((self.folder / "raw" / "photos" / self.CLEAR).exists())
         self.assertFalse(live_reset(self.folder)["started"])
         self.assertFalse(self.folder.exists())
 
-    def test_known_demo_documents_give_their_facts_and_unknown_files_none(self):
-        facts = known_facts("x.pdf", (DEMO_DOCS / "heating_check_report.pdf").read_bytes())
-        self.assertEqual(facts["radiator_type"]["value"], "22")
-        self.assertEqual(facts["radiator_type"]["source_file"], "x.pdf")
-        self.assertEqual(known_facts("y.pdf", PDF), {})
+    def test_unclear_photo_leaves_it_uncertain(self):
+        live_start(self.folder)
+        self.upload_doc(self.PDF_NAME)
+        state = self.upload_doc(self.UNCLEAR)
+        self.assertEqual(state["latest"]["decision"]["verdict"], "yellow")
+        self.assertEqual(state["latest"]["added"]["facts"], {})
+        self.assertIn("Unclear photo", state["latest"]["added"]["notes"][0])
 
+    def test_register_reads_demo_files_by_content_only(self):
+        facts, note = known_facts("renamed.jpg", (DEMO_DOCS / self.CLEAR).read_bytes())
+        self.assertEqual((facts["radiator_type"]["value"], facts["radiator_type"]["source_file"]), ("22", "renamed.jpg"))
+        self.assertTrue(note)
+        self.assertEqual(known_facts("other.pdf", PDF), (None, None))
 
 if __name__ == "__main__":
     unittest.main()

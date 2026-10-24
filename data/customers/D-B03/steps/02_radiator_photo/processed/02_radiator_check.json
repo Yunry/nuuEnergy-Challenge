@@ -15,21 +15,21 @@
   "fields": {
     "heat_distribution": {
       "value": "radiators",
-      "source": "customer_input.heat_distribution",
+      "source": "upload:05_zweirohr-vermutet_kompakt.jpeg",
       "confidence": "high",
-      "evidence": "radiators"
+      "evidence": "Panel radiator with thermostatic valve"
     },
     "pipe_system": {
       "value": "two-pipe",
-      "source": "upload:heating_check_report.pdf",
-      "confidence": "high",
-      "evidence": "Heating system: two-pipe (Zweirohrsystem)"
+      "source": "upload:05_zweirohr-vermutet_kompakt.jpeg",
+      "confidence": "medium",
+      "evidence": "Separate flow and return pipes rise from the floor to the valve and the lower connection"
     },
     "flow_temperature_c": {
-      "value": 55,
-      "source": "upload:heating_check_report.pdf",
-      "confidence": "medium",
-      "evidence": "Heating curve: 55 °C flow at -12 °C outside"
+      "value": null,
+      "source": "customer_input.flow_temperature_c",
+      "confidence": null,
+      "evidence": "not documented"
     },
     "radiator_count": {
       "value": 15,
@@ -39,24 +39,24 @@
     },
     "radiator_type": {
       "value": "22",
-      "source": "upload:heating_check_report.pdf",
-      "confidence": "high",
-      "evidence": "15 panel radiators, all type 22 (two panels)"
+      "source": "upload:05_zweirohr-vermutet_kompakt.jpeg",
+      "confidence": "medium",
+      "evidence": "Profiled front panel with a convector grille on top: two-panel radiator (type 22)"
     },
     "radiator_size_mm": {
       "value": [
         600,
         1400
       ],
-      "source": "upload:heating_check_report.pdf",
-      "confidence": "high",
-      "evidence": "All radiators 600 × 1400 mm"
+      "source": "upload:05_zweirohr-vermutet_kompakt.jpeg",
+      "confidence": "low",
+      "evidence": "No scale in the photo: about 600 mm high, panel continues beyond the frame; 1,400 mm wide assumed (illustrative, confirm on site)"
     },
     "valves_to_replace": {
-      "value": 0,
-      "source": "upload:heating_check_report.pdf",
+      "value": 12,
+      "source": "customer_input.radiator_info",
       "confidence": "high",
-      "evidence": "Hydraulic balancing done 03/2023: all 15 thermostatic valves replaced and preset"
+      "evidence": "12 valves would need replacement"
     }
   },
   "reference_data": {

@@ -13,7 +13,7 @@ data/customers/<id>/
   timeline.json, timeline.md       one row per step: verdict, load, water temperature, saving, open inputs
 
     start(folder, customer_input, processed)        step 00: the first input
-    add_upload(folder, label, files, facts)         next step: files plus facts {key: {value, confidence, evidence, source_file}}
+    add_upload(folder, label, files, facts, notes)  next step: files plus facts {key: {value, confidence, evidence, source_file}}
 """
 import json
 import shutil
@@ -71,7 +71,7 @@ def report(customer_id, n, label, added, outputs, what):
     return "\n".join(lines) + "\n"
 
 
-def record(folder, label, steps, files, facts):
+def record(folder, label, steps, files, facts, notes=()):
     customer_id = folder.name
     n = len(step_dirs(folder))
     out = folder / "steps" / f"{n:02d}_{label}"
@@ -85,7 +85,7 @@ def record(folder, label, steps, files, facts):
         step["building_id"] = customer_id
     outputs = engine.run(customer_id, steps)
     what = scenarios.run(steps)
-    added = {"step": n, "label": label, "files": saved, "facts": facts}
+    added = {"step": n, "label": label, "files": saved, "facts": facts, "notes": list(notes)}
     write(out / "added.json", added)
     for name, obj in steps.items():
         write(out / "processed" / f"{name}.json", obj)
@@ -120,12 +120,12 @@ def update_timeline(folder):
     (folder / "timeline.md").write_text("\n".join(md) + "\n")
 
 
-def start(folder, customer_input, processed):
+def start(folder, customer_input, processed, label="initial"):
     if folder.exists():
         shutil.rmtree(folder)
     write(folder / "raw" / "customer_input.json", customer_input)
-    return record(folder, "initial", processed, [], {})
+    return record(folder, label, processed, [], {})
 
 
-def add_upload(folder, label, files, facts):
-    return record(folder, label, apply_facts(latest_processed(folder), facts), files, facts)
+def add_upload(folder, label, files, facts, notes=()):
+    return record(folder, label, apply_facts(latest_processed(folder), facts), files, facts, notes)

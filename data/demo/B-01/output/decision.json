@@ -58,6 +58,7 @@
     "Full-load hours 1800-2100 h (official approx. 2,000; range ours)",
     "Radiator size unknown: assumed 600 x 1000 mm",
     "Radiator output vs temperature: EN 442, n = 1.3, 10 K spread",
+    "No official LPG price: the natural-gas price 0.11 EUR/kWh is used as an assumption (LPG usually costs more, so the real saving is likely higher)",
     "Heat pump also covers hot water, at the same JAZ as space heating"
   ],
   "dev_check": {

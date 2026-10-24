@@ -78,7 +78,22 @@ function progress() {
   return `<nav class="progress" aria-label="Your progress"><ol>${steps.map((name, i) => `<li ${state.step === i + 1 ? 'aria-current="step"' : ''} class="${state.step > i + 1 ? 'complete' : ''}"><span class="step-number">${state.step > i + 1 ? tick : i + 1}</span><span>${name}</span></li>`).join('')}</ol></nav>`;
 }
 function welcome() {
-  return `<main id="main" class="welcome"><div class="welcome-copy"><p class="eyebrow"><span class="small-line"></span> A clearer next step for your home</p><h1 id="page-title" tabindex="-1">Could a heat pump work for <span>your home?</span></h1><p class="lead">Start with a heating bill or photo. Our AI helper finds the details, you check them, and we help you see what’s possible.</p><ul class="welcome-benefits"><li>${tick}No technical knowledge needed</li><li>${tick}It’s fine if you don’t know every answer</li><li>${tick}Go at your own pace. Come back a step anytime.</li></ul><button class="button primary start-button" data-start-ai>Help me check my home ${chevron}</button><button class="back-button manual-start" data-start-manual>I’d rather answer the questions myself →</button><p class="quiet">About 3 minutes · No sign-up · You’re in control</p></div><aside class="welcome-aside"><div class="illustration-card"><span class="illustration-label">A warmer home. A clearer picture.</span>${homeArt}<div class="illustration-caption"><span class="leaf-mark" aria-hidden="true">↗</span><p>A first step towards<br><strong>heating with less fossil fuel.</strong></p></div></div><p class="aside-note">An initial check, with the final details confirmed by a heating professional.</p></aside><section class="sample-section" aria-labelledby="sample-heading"><div><h2 id="sample-heading">Just having a look?</h2><p>Explore a real, anonymised example home.</p></div><details class="sample-details"><summary>Try an example home</summary><div class="sample-list">${sampleError ? `<p role="status">${escape(sampleError)}</p><button class="button secondary" data-retry>Try loading examples again</button>` : samples.length ? samples.map(b => `<button class="sample-button" data-sample="${escape(b.building_id)}"><strong>${escape(b.building_id)} · ${b.construction_year} home</strong><span>${b.floor_area_m2} m² · ${escape(labels.heat_distribution[b.heat_distribution])}${b.pipe_system === 'single-pipe' ? ' · single-pipe' : ''}</span>${chevron}</button>`).join('') : '<p>Loading example homes…</p>'}</div></details></section></main>`;
+  const homes = sampleError ? `<p role="status">${escape(sampleError)}</p><button class="button secondary" data-retry>Try loading examples again</button>`
+    : samples.length ? samples.map(b => `<button class="sample-button" data-sample="${escape(b.building_id)}"><strong>${escape(b.building_id)} · ${b.construction_year} home</strong><span>${b.floor_area_m2} m² · ${escape(labels.heat_distribution[b.heat_distribution] || b.heat_distribution)}${b.pipe_system === 'single-pipe' ? ' · single-pipe' : ''}</span>${chevron}</button>`).join('')
+    : '<p>Loading example homes…</p>';
+  return `<main id="main" class="welcome"><div class="welcome-copy"><p class="eyebrow"><span class="small-line"></span> A clearer next step for your home</p><h1 id="page-title" tabindex="-1">Could a heat pump work for <span>your home?</span></h1>
+      <p class="lead">Check your own home, or have a look at real example homes and a live demo first.</p></div>
+    <aside class="welcome-aside"><div class="illustration-card"><span class="illustration-label">A warmer home. A clearer picture.</span>${homeArt}<div class="illustration-caption"><span class="leaf-mark" aria-hidden="true">↗</span><p>A first step towards<br><strong>heating with less fossil fuel.</strong></p></div></div></aside>
+    <section class="entrances" aria-label="Two ways to start">
+      <article class="entrance"><p class="entrance-kicker">1 · Your home</p><h2>Help me check my home</h2>
+        <p>Answer a few questions, with AI help for bills and photos. Your answers are saved as a JSON file in your own customer folder.</p>
+        <ul class="welcome-benefits"><li>${tick}No technical knowledge needed</li><li>${tick}It’s fine if you don’t know every answer</li><li>${tick}About 3 minutes · no sign-up</li></ul>
+        <button class="button primary start-button" data-start-ai>Help me check my home ${chevron}</button><button class="back-button manual-start" data-start-manual>I’d rather answer the questions myself →</button></article>
+      <article class="entrance"><p class="entrance-kicker">2 · Just have a look</p><h2>Example homes and live demo</h2>
+        <p>Five real, anonymised homes from the challenge, or watch the result change as documents are uploaded.</p>
+        <div class="sample-list">${homes}</div>
+        <a class="button secondary live-entrance" href="/live.html?fresh=1">Live demo: certificate + radiator photo ${chevron}</a></article>
+    </section></main>`;
 }
 const sparkle = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4L12 3Z"/></svg>';
 function filledBadge(key) {
@@ -433,7 +448,7 @@ function yellowOptions(o) {
       ${videoCallRequested ? '<p class="cv-note" role="status">✓ Request noted. This prototype does not book a real appointment.</p>' : '<button class="button secondary" data-video-call>Request a video call</button>'}</article></div>`;
 }
 // Yearly cost today against the heat pump, with the heat pump's min-max band (open options) and the saving.
-function savingChart(o, fuel) {
+function savingChart(o, fuel, priceAssumed = false) {
   const cost = o['03_operating_cost'].cost_eur_per_year, jaz = o['03_operating_cost'].jaz, hp = cost.heat_pump, today = cost.today;
   if (!hp) return '<p class="cv-chart-empty">The running cost is estimated once the heating water can stay at or below 60 °C.</p>';
   const max = Math.max(today ?? 0, hp[1]), step = max > 5000 ? 2000 : max > 2000 ? 1000 : 500, top = Math.ceil(max * 1.05 / step) * step;
@@ -445,7 +460,7 @@ function savingChart(o, fuel) {
   return `<figure class="cv-chart"><figcaption>Heating cost per year</figcaption>
     <svg viewBox="0 0 600 ${axisY + 12}" role="img" aria-labelledby="cv-chart-desc"><desc id="cv-chart-desc">${today !== null ? `Today ${money(today)} a year` : 'Today: no official price for this fuel'}; with a heat pump ${euros(hp)} a year${saving ? `; saving ${euros(saving)}` : ''}.</desc>
       ${ticks.map(t => `<line class="cv-grid" x1="${x(t)}" x2="${x(t)}" y1="14" y2="${axisY - 14}"/><text class="cv-tick" x="${x(t)}" y="${axisY}">${k(t)}</text>`).join('')}
-      <text class="cv-row" x="0" y="${y1 + 16}">Today · ${escape(fuel)}</text>
+      <text class="cv-row" x="0" y="${y1 + 16}">Today · ${escape(fuel.split(' / ')[0])}${priceAssumed ? '*' : ''}</text>
       ${today !== null ? `<g><title>Today: ${money(today)} a year</title>${bar(L, x(today), y1, 'cv-today')}</g><text class="cv-value" x="${x(today) + 6}" y="${y1 + 16}">${money(today)}</text>`
         : `<text class="cv-value" x="${L}" y="${y1 + 16}">no official price for this fuel</text>`}
       <text class="cv-row" x="0" y="${y2 + 16}">With a heat pump</text>
@@ -457,7 +472,7 @@ function savingChart(o, fuel) {
         <line x1="${x(today)}" x2="${x(today)}" y1="${ys - 6}" y2="${ys + 6}"/><line x1="${x(hp[0])}" x2="${x(hp[0])}" y1="${ys - 6}" y2="${ys + 6}"/>
         <text class="cv-value" x="${(x(hp[0]) + x(today)) / 2}" y="${ys + 22}" text-anchor="middle">You save ${euros(saving)} a year</text></g>` : ''}
     </svg>
-    <p class="small">${hp[1] > hp[0] ? `The lighter band is the range over what is still open (heat pump efficiency ${span(jaz, '')}). ` : ''}Fixed challenge prices, energy only.</p>
+    <p class="small">${hp[1] > hp[0] ? `The lighter band is the range over what is still open (heat pump efficiency ${span(jaz, '')}). ` : ''}Fixed challenge prices, energy only.${priceAssumed ? ' *No official price for this fuel: the natural-gas price (€0.11/kWh) is assumed; the real saving is likely higher.' : ''}</p>
     <table class="sr-only"><caption>Heating cost per year</caption><tr><th>Today</th><td>${today !== null ? money(today) : 'not priced'}</td></tr><tr><th>With a heat pump</th><td>${euros(hp)}</td></tr>${cost.saving ? `<tr><th>Saving</th><td>${euros(saving)}</td></tr>` : ''}</table></figure>`;
 }
 function customerView(p, o) {
@@ -470,7 +485,7 @@ function customerView(p, o) {
   return `<div class="cv"><div class="cv-verdict ${v.cls}"><p class="eyebrow">${v.eyebrow}</p><h1 id="page-title" tabindex="-1">${v.title}</h1>
       <p class="cv-saving">${cost.saving ? `<strong>${euros(cost.saving)}</strong> saved per year` : d.verdict === 'red' ? 'Saving: estimated once the heating water can stay at or below 60 °C' : 'Saving: more information needed'}</p></div>
     <p class="cv-text">${escape(customerParagraph(p, o))}</p>
-    ${savingChart(o, fuel)}
+    ${savingChart(o, fuel, p['03_operating_cost'].reference_data.fuel_price_eur_per_kwh.source === 'assumption')}
     ${followUpPanel()}
     <section class="cv-suggestions ${v.cls}"><h2>${s.title}</h2>${body}</section>
     <div class="result-actions"><button class="button ${s.options ? 'secondary' : 'primary'}" data-go="6">Check and complete my details ${chevron}</button></div></div>`;

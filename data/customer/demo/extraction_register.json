@@ -1,0 +1,73 @@
+{
+  "about": "Demo extraction register: what the document extraction reads from each demo file, keyed by file content (sha256). Stands in for the AI so the live demo is repeatable; any other file goes to the real AI extraction. Readings marked illustrative are demo assumptions, to be confirmed on site.",
+  "files": [
+    {
+      "file": "energieausweis_b03_hamburg_1970_oel.pdf",
+      "sha256": "b0150c71aa3037dd3b0973ddb4046e92b8f7c04fd39002651e8bf29fc0926cea",
+      "note": "Energy certificate: confirms the bill, building age and area. Says nothing about the radiators.",
+      "facts": {
+        "energy_carrier": {
+          "value": "oil",
+          "confidence": "high",
+          "evidence": "Wesentlicher Energieträger: Heizöl EL"
+        },
+        "annual_consumption_kwh": {
+          "value": 40000,
+          "confidence": "high",
+          "evidence": "3-Jahres-Mittel 2021–2023: 40.000 kWh/a (~4.000 l Heizöl)"
+        },
+        "consumption_full_year": {
+          "value": true,
+          "confidence": "high",
+          "evidence": "Erfassungszeitraum 3 volle Jahre (2021–2023), Jahresmittel"
+        },
+        "construction_year": {
+          "value": 1970,
+          "confidence": "high",
+          "evidence": "Baujahr Gebäude 1970"
+        },
+        "floor_area_m2": {
+          "value": 200,
+          "confidence": "high",
+          "evidence": "Wohnfläche 200,0 m²"
+        }
+      }
+    },
+    {
+      "file": "05_zweirohr-vermutet_kompakt.jpeg",
+      "sha256": "02ec264b9e4149fda718011ab1db06332fd055505cf5ece881f0cb18ff8a8bc6",
+      "note": "Clear radiator photo: panel type and pipe layout are readable; the size is estimated (no scale in the photo).",
+      "facts": {
+        "heat_distribution": {
+          "value": "radiators",
+          "confidence": "high",
+          "evidence": "Panel radiator with thermostatic valve"
+        },
+        "radiator_type": {
+          "value": "22",
+          "confidence": "medium",
+          "evidence": "Profiled front panel with a convector grille on top: two-panel radiator (type 22)"
+        },
+        "pipe_system": {
+          "value": "two-pipe",
+          "confidence": "medium",
+          "evidence": "Separate flow and return pipes rise from the floor to the valve and the lower connection"
+        },
+        "radiator_size_mm": {
+          "value": [
+            600,
+            1400
+          ],
+          "confidence": "low",
+          "evidence": "No scale in the photo: about 600 mm high, panel continues beyond the frame; 1,400 mm wide assumed (illustrative, confirm on site)"
+        }
+      }
+    },
+    {
+      "file": "07_unklar_bad-multiblock.jpeg",
+      "sha256": "154a468ddfe0133ae693376dc2a794c578752fde83d77ff107798d6848da734d",
+      "note": "Unclear photo: a bathroom towel radiator on a valve multi-block. Neither the pipe layout nor the type of the panel radiators can be read, so nothing is added.",
+      "facts": {}
+    }
+  ]
+}

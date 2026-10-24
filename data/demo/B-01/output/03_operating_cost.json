@@ -7,15 +7,19 @@
     3.5
   ],
   "cost_eur_per_year": {
-    "today": null,
+    "today": 1100,
     "heat_pump": [
       654,
       817
     ],
-    "saving": null,
-    "note": "only combinations up to 60 C; above 60 C there is no official JAZ; no official price for 'lpg': today's cost not computed"
+    "saving": [
+      283,
+      446
+    ],
+    "note": "only combinations up to 60 C; above 60 C there is no official JAZ"
   },
   "assumptions": [
+    "No official LPG price: the natural-gas price 0.11 EUR/kWh is used as an assumption (LPG usually costs more, so the real saving is likely higher)",
     "Heat pump also covers hot water, at the same JAZ as space heating"
   ]
 }

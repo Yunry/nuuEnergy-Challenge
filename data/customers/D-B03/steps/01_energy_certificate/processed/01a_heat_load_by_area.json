@@ -13,15 +13,15 @@
   "fields": {
     "construction_year": {
       "value": 1970,
-      "source": "customer_input.construction_year",
+      "source": "upload:energieausweis_b03_hamburg_1970_oel.pdf",
       "confidence": "high",
-      "evidence": "1970"
+      "evidence": "Baujahr Gebäude 1970"
     },
     "floor_area_m2": {
       "value": 200,
-      "source": "customer_input.floor_area_m2",
+      "source": "upload:energieausweis_b03_hamburg_1970_oel.pdf",
       "confidence": "high",
-      "evidence": "200"
+      "evidence": "Wohnfläche 200,0 m²"
     },
     "renovation_status": {
       "value": "partially",
@@ -30,10 +30,10 @@
       "evidence": "partially"
     },
     "unheated_area": {
-      "value": 45,
-      "source": "upload:heating_check_report.pdf",
-      "confidence": "high",
-      "evidence": "Top floor added in the 1990s: 45 m², not heated and not lived in"
+      "value": "top floor, size unknown",
+      "source": "customer_input.building_notes",
+      "confidence": "medium",
+      "evidence": "Top floor added in the 1990s, currently not lived in."
     },
     "insulation": {
       "value": [

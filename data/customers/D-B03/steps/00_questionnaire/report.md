@@ -1,4 +1,4 @@
-# Technician report · D-B03 · step 0 (initial)
+# Technician report · D-B03 · step 0 (questionnaire)
 
 **Verdict: YELLOW (unknown)** — A heat pump can very likely heat this house, but whether the existing radiators are big enough is still open. One side photo of a radiator would settle most of it.
 

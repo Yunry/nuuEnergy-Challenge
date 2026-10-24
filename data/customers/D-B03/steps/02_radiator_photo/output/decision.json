@@ -12,12 +12,19 @@
       "source": "pipe_system"
     },
     {
+      "type": "action",
+      "text": "12 radiator valves need replacement anyway; a good moment for hydraulic balancing.",
+      "source": "valves_to_replace"
+    },
+    {
       "type": "hint",
       "text": "79-92 W/m2 is above 75 W/m2: better windows or insulation may be worth it.",
       "source": "heating_load_kw"
     }
   ],
-  "homeowner_can_provide": [],
+  "homeowner_can_provide": [
+    "Current flow temperature setting of the boiler, if known"
+  ],
   "technician_checks": [
     "Exact heat load (DIN EN 12831)",
     "Room-by-room radiator sizing",
@@ -25,6 +32,7 @@
     "Outdoor unit placement, sound and permits"
   ],
   "assumptions": [
+    "Unheated area of unknown size (top floor, size unknown): heated area 70-100 % of floor area",
     "Partially renovated, built before 1979: 80-120 W/m2 (no official row for 'partially')",
     "Full-load hours 1800-2100 h (official approx. 2,000; range ours)",
     "Radiator rating scaled by face area from 600 x 1000 mm (rough)",
