@@ -1,0 +1,18 @@
+{
+  "building_id": "B-02",
+  "construction_year": 2005,
+  "floor_area_m2": 180,
+  "renovation_status": null,
+  "heat_distribution": "underfloor",
+  "annual_consumption_kwh": 15500,
+  "energy_carrier": "gas",
+  "energy_carrier_detail": "natural gas",
+  "radiator_info": "Underfloor heating with 3 manifolds (balanced), plus 1 radiator (type and age not documented)",
+  "pipe_system": "unknown",
+  "flow_temperature_c": null,
+  "persons_in_household": 3,
+  "hot_water_via_heating": true,
+  "rooms": null,
+  "building_notes": "A wood stove is used all winter. Solar thermal system for hot water present.",
+  "location": "Munich area (82xxx)"
+}

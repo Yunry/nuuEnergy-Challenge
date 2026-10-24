@@ -1,0 +1,72 @@
+{
+  "schema_version": "0.1",
+  "building_id": "B-03",
+  "step": "03_operating_cost",
+  "depends_on": [
+    "output/01_heat_load.json",
+    "output/02_radiator_check.json"
+  ],
+  "raw_inputs": [
+    {
+      "id": "customer_input",
+      "type": "json",
+      "ref": "data/demo/B-03/raw/customer_input.json"
+    }
+  ],
+  "fields": {
+    "annual_consumption_kwh": {
+      "value": 40000,
+      "source": "customer_input.annual_consumption_kwh",
+      "confidence": "high",
+      "evidence": "40000; consistent with 'approx. 4,000 litres per year' x 10 kWh/l"
+    },
+    "energy_carrier": {
+      "value": "oil",
+      "source": "customer_input.energy_carrier",
+      "confidence": "high",
+      "evidence": "oil"
+    },
+    "persons_in_household": {
+      "value": 2,
+      "source": "customer_input.persons_in_household",
+      "confidence": "high",
+      "evidence": "2"
+    },
+    "hot_water_via_heating": {
+      "value": true,
+      "source": "customer_input.hot_water_via_heating",
+      "confidence": "high",
+      "evidence": "true"
+    }
+  },
+  "reference_data": {
+    "fuel_price_eur_per_kwh": {
+      "value": 0.17,
+      "source": "official",
+      "confidence": "high",
+      "evidence": "Technical Guardrails 3: heating oil 1.70 EUR/litre (~17 ct/kWh)"
+    },
+    "hp_electricity_price_eur_per_kwh": {
+      "value": 0.26,
+      "source": "official",
+      "confidence": "high",
+      "evidence": "Technical Guardrails 3: heat-pump electricity 26 ct/kWh"
+    },
+    "boiler_efficiency": {
+      "value": 0.88,
+      "source": "official",
+      "confidence": "high",
+      "evidence": "Technical Guardrails 1b: useful heat ~ consumption x 0.88"
+    },
+    "jaz": {
+      "value": {
+        "underfloor_35c": 4.0,
+        "radiators_le_55c": 3.5,
+        "radiators_55_60c": 2.8
+      },
+      "source": "official",
+      "confidence": "high",
+      "evidence": "Technical Guardrails 3; no official JAZ above 60 C"
+    }
+  }
+}

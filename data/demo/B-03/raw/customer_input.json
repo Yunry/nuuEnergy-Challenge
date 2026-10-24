@@ -1,0 +1,18 @@
+{
+  "building_id": "B-03",
+  "construction_year": 1970,
+  "floor_area_m2": 200,
+  "renovation_status": "partially",
+  "heat_distribution": "radiators",
+  "annual_consumption_kwh": 40000,
+  "energy_carrier": "oil",
+  "energy_carrier_detail": "heating oil, approx. 4,000 litres per year",
+  "radiator_info": "15 radiators; some panel radiators with presettable valves, 12 valves would need replacement; type and age not documented",
+  "pipe_system": "two-pipe",
+  "flow_temperature_c": null,
+  "persons_in_household": 2,
+  "hot_water_via_heating": true,
+  "rooms": 11,
+  "building_notes": "Cavity wall insulation (blown-in) and insulated roof, year unknown. Double glazing without low-e coating. Top floor added in the 1990s, currently not lived in.",
+  "location": "Hamburg area (21xxx)"
+}

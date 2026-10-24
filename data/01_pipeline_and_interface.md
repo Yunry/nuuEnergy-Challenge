@@ -1,12 +1,12 @@
 # Pipeline and interface: first decision (draft v0.1)
 
 Status: **starting point for team discussion**, 2026-10-24. Nothing here is final.
-Official material is summarised in the [repository README](../../README.md); everything below marked *ours* is our own proposal, not official.
+Official material is summarised in the [repository README](../README.md); everything below marked *ours* is our own proposal, not official.
 
-Example files:
+Worked example: customer B-03 in [demo/B-03](demo/B-03) (folder layout: [demo/README.md](demo/README.md)).
 
-- [example_input_B-03.json](example_input_B-03.json): engine input (after extraction and enrichment)
-- [example_output_B-03.json](example_output_B-03.json): engine output
+- [processed/](demo/B-03/processed): engine input after extraction and enrichment, one file per calculation step
+- [output/](demo/B-03/output): engine output, one file per step plus [decision.json](demo/B-03/output/decision.json)
 
 All numbers in the examples are illustrative. Radiator ratings are placeholders until verified.
 
@@ -41,7 +41,7 @@ raw inputs (dataset JSON, photos, bill, free text)
 
 ## 3. Engine steps and where they come from
 
-From the [technical rules supplied by the organizers](../../README.md#5-technical-rules-supplied-by-the-organizers):
+From the [technical rules supplied by the organizers](../README.md#5-technical-rules-supplied-by-the-organizers):
 
 | Step | Official source | Question | Decides colour? |
 | --- | --- | --- | --- |

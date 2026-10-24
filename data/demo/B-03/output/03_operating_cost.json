@@ -1,0 +1,21 @@
+{
+  "schema_version": "0.1",
+  "building_id": "B-03",
+  "step": "03_operating_cost",
+  "jaz": [
+    2.8,
+    3.5
+  ],
+  "cost_eur_per_year": {
+    "today": 6800,
+    "heat_pump": [
+      2615,
+      3269
+    ],
+    "saving": [
+      3531,
+      4185
+    ],
+    "note": "only combinations up to 60 C; above 60 C there is no official JAZ"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": "0.1",
+  "building_id": "B-03",
+  "step": "02_radiator_check",
+  "inputs_as_ranges": {
+    "radiator_type": [
+      "11",
+      "22",
+      "33"
+    ]
+  },
+  "flow_temp_c": {
+    "required": [
+      50,
+      83
+    ],
+    "by_case": {
+      "33": [
+        50,
+        53
+      ],
+      "22": [
+        58,
+        62
+      ],
+      "11": [
+        77,
+        83
+      ]
+    }
+  }
+}
