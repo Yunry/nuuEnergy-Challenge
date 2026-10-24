@@ -1,6 +1,7 @@
 import { resolveReview, clearUnknownAnswers } from './evidence.js';
 import { assess, demo, scenarios, toCustomerInput } from './assessment.js';
 import { extractFiles, applyFields, fieldLabels, uploadFiles, validateFiles } from './extraction.js';
+import { emptyQc, questionHtml, progressBar, nextId, prevId, visible, answerText, TITLES, CONSUMPTION_RANGES, RADIATOR_RANGES, RENOVATION } from './quickcheck.js';
 
 const app = document.querySelector('#app');
 const storageKey = 'nuu-home-check-v1';
@@ -12,15 +13,17 @@ try {
 } catch { /* History is optional when browser storage is unavailable. */ }
 let historySaved = true;
 const empty = () => ({ construction_year: '', floor_area_m2: '', renovation_status: 'unknown', energy_carrier: 'unknown', heat_distribution: 'unknown', amount: '', unit: 'kwh', consumption_full_year: 'unknown', persons_in_household: '', hot_water_via_heating: 'unknown', flow_temperature_c: '', pipe_system: 'unknown', radiator_count: '', radiator_type: 'unknown', other_heat_source: 'unknown', solar_thermal: 'unknown', building_notes: '', building_id: 'HOME' });
-let state = { step: 0, answers: empty(), larger: false, sample: false, evidence: {}, evidenceReviews: {}, evidenceLedger: null, confirm: {}, mode: 'both' };
+let state = { step: 0, answers: empty(), larger: false, sample: false, evidence: {}, evidenceReviews: {}, evidenceLedger: null, confirm: {}, mode: 'both', q: 'heating', qc: emptyQc(), qcReturn: false };
 try {
   const saved = JSON.parse(sessionStorage.getItem(storageKey));
-  if (saved?.answers && Number.isInteger(saved.step) && saved.step >= 0 && saved.step <= 7) state = { ...state, ...saved, answers: { ...empty(), ...saved.answers } };
+  if (saved?.answers && Number.isInteger(saved.step) && saved.step >= 0 && saved.step <= 7) state = { ...state, ...saved, answers: { ...empty(), ...saved.answers }, qc: { ...emptyQc(), ...(saved.qc || {}), photos: { valve: null, side: null } } };
+  if (['reading'].includes(state.qc.bill)) state.qc.bill = 'pending';
+  if (['reading'].includes(state.qc.rad)) state.qc.rad = 'pending';
 } catch { /* Storage is optional; the flow still works in memory. */ }
 let errors = {}, returnToReview = false, editSnapshot = null, samples = [], sampleError = '';
 let extraction = { status: 'idle', result: null, error: '' }, aiAvailable = null, uploadGeneration = 0;
 let chosenFiles = [], homeDetailsOpen = false, addedCount = 0, uploadSave = null, uploadPromise = Promise.resolve();
-const steps = ['Your home', 'Your heating', 'Your energy use', 'Check your answers'];
+const steps = ['Quick check', 'Quick check', 'Quick check', 'Check your answers'];
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const chevron = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>';
 const tick = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>';
@@ -48,7 +51,8 @@ window.addEventListener('popstate', event => {
 history.replaceState({ step: state.step }, '');
 function resetActive() {
   const { larger, mode } = state;
-  state = { step: 0, answers: empty(), larger, mode, sample: false, evidence: {}, evidenceReviews: {}, evidenceLedger: null, confirm: {} };
+  state = { step: 0, answers: empty(), larger, mode, sample: false, evidence: {}, evidenceReviews: {}, evidenceLedger: null, confirm: {}, q: 'heating', qc: emptyQc(), qcReturn: false };
+  radFiles = { valve: null, side: null };
   assessment = { key: null, status: 'idle', data: null }; whatIf = { processed: null };
   rawFiles = { id: null, files: [] }; videoCallRequested = false;
   chosenFiles = []; uploadSave = null; uploadPromise = Promise.resolve(); addedCount = 0;
@@ -123,7 +127,8 @@ function errorSummary() {
   return entries.length ? `<div class="error-summary" id="error-summary" tabindex="-1"><h2>Let’s check ${entries.length === 1 ? 'one answer' : 'these answers'}</h2><ul>${entries.map(([key, text]) => `<li><a href="#${key}">${escape(text)}</a></li>`).join('')}</ul></div>` : '';
 }
 function progress() {
-  return `<nav class="progress" aria-label="Your progress"><ol>${steps.map((name, i) => `<li ${state.step === i + 1 ? 'aria-current="step"' : ''} class="${state.step > i + 1 ? 'complete' : ''}"><span class="step-number">${state.step > i + 1 ? tick : i + 1}</span><span>${name}</span></li>`).join('')}</ol></nav>`;
+  const items = [['Quick check', state.step > 1], ['Check your answers', state.step > 4]];
+  return `<nav class="progress" aria-label="Your progress"><ol>${items.map(([name, done], i) => `<li ${(i === 0 && state.step < 4) || (i === 1 && state.step === 4) ? 'aria-current="step"' : ''} class="${done ? 'complete' : ''}"><span class="step-number">${done ? tick : i + 1}</span><span>${name}</span></li>`).join('')}</ol></nav>`;
 }
 function welcome() {
   return `<main id="main" class="welcome"><div class="welcome-copy"><p class="eyebrow"><span class="small-line"></span> A clearer next step for your home</p><h1 id="page-title" tabindex="-1">Could a heat pump work for <span>your home?</span></h1><p class="lead">Start with a heating bill or photo. Our AI helper finds the details, you check them, and we help you see what’s possible.</p><ul class="welcome-benefits"><li>${tick}No technical knowledge needed</li><li>${tick}It’s fine if you don’t know every answer</li><li>${tick}Go at your own pace. Come back a step anytime.</li></ul><button class="button primary start-button" data-start-ai>Help me check my home ${chevron}</button><button class="back-button manual-start" data-start-manual>I’d rather answer the questions myself →</button><p class="quiet">About 3 minutes · No sign-up · You’re in control</p></div><aside class="welcome-aside"><div class="illustration-card"><span class="illustration-label">A warmer home. A clearer picture.</span>${homeArt}<div class="illustration-caption"><span class="leaf-mark" aria-hidden="true">↗</span><p>A first step towards<br><strong>heating with less fossil fuel.</strong></p></div></div><p class="aside-note">An initial check, with the final details confirmed by a heating professional.</p></aside><section class="sample-section" aria-labelledby="sample-heading"><div><h2 id="sample-heading">Just having a look?</h2><p>Explore a real, anonymised example home.</p></div><details class="sample-details"><summary>Try an example home</summary><div class="sample-list">${sampleError ? `<p role="status">${escape(sampleError)}</p><button class="button secondary" data-retry>Try loading examples again</button>` : samples.length ? samples.map(b => `<button class="sample-button" data-sample="${escape(b.building_id)}"><strong>${escape(b.building_id)} · ${b.construction_year} home</strong><span>${b.floor_area_m2} m² · ${escape(labels.heat_distribution[b.heat_distribution])}${b.pipe_system === 'single-pipe' ? ' · single-pipe' : ''}</span>${chevron}</button>`).join('') : '<p>Loading example homes…</p>'}</div></details></section>${assessmentHistory()}</main>`;
@@ -228,14 +233,22 @@ function reviewGroup(title, step, rows) {
   return `<section class="review-group"><div class="section-header"><h2>${title}</h2><button type="button" class="edit-button" data-edit="${step}" aria-label="Change ${title.toLowerCase()} answers">Change ${chevron}</button></div><dl>${rows.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl></section>`;
 }
 function review() {
-  const a = state.answers;
-  return `${evidenceSummary()}${historyPanel()}${state.sample ? `<div class="sample-notice">Example home ${escape(a.building_id)}. These are anonymised project details. You can change any answer.</div>` : ''}${reviewGroup('Your home', 1, [['Heated area', answer('floor_area_m2', ' m²')], ['Year built', answer('construction_year')], ['Insulation improvements', answer('renovation_status')]])}${reviewGroup('Your heating', 2, [['Energy source', answer('energy_carrier')], ['Room heating', answer('heat_distribution')], ['Radiators', answer('radiator_count')], ['Radiator type', answer('radiator_type')]])}${reviewGroup('Your energy use', 3, [['Energy used', answer('amount', ' ' + ({ kwh: 'kWh', litres: 'litres', m3: 'm³' }[a.unit]))], ['Covers a full year', answer('consumption_full_year')], ['People at home', answer('persons_in_household')], ['Hot water from heating', answer('hot_water_via_heating')], ['Water temperature', answer('flow_temperature_c', ' °C')], ['Pipe layout', answer('pipe_system')], ['Another heat source', answer('other_heat_source')], ['Solar hot water', answer('solar_thermal')], ...(a.building_notes ? [['Your notes', escape(a.building_notes)]] : [])])}<p class="review-reassurance">An unanswered question is okay. We’ll explain where more information would help.</p>`;
+  const a = state.answers, qc = state.qc;
+  const rows = visible(a, qc).map(q => `<div><dt>${TITLES[q.id]}</dt><dd>${escape(answerText(q.id, a, qc))}</dd><dd class="qc-review-edit"><button type="button" class="edit-button" data-qc-edit="${q.id}" aria-label="Change ${TITLES[q.id].toLowerCase()}">Change ${chevron}</button></dd></div>`).join('');
+  return `${evidenceSummary()}${historyPanel()}${state.sample ? `<div class="sample-notice">Example home ${escape(a.building_id)}. These are anonymised project details. You can change any answer.</div>` : ''}<section class="review-group qc-review"><dl>${rows}</dl></section><p class="review-reassurance">An unanswered question is okay. We’ll explain where more information would help.</p>`;
+}
+// Quick check (step 1): one question per screen, see quickcheck.js.
+function quickCheckPage() {
+  if (!visible(state.answers, state.qc).some(q => q.id === state.q)) state.q = 'heating';
+  const html = questionHtml(state.q, state.answers, state.qc, { escape, money, aiAvailable });
+  return `<main id="main" class="flow-main qc-main">${progressBar(state.q, state.answers, state.qc)}<section class="form-panel qc-panel">${html}</section></main>`;
 }
 function formPage() {
+  if (state.step < 4) return quickCheckPage();
   const titles = ['Your home check starts here.', 'How do you keep your home warm?', 'A little about your energy use.', 'Does everything look right?'];
   const intros = ['Let AI help with the paperwork, or tell us what you know.', 'Choose what you know. You can always come back and change an answer.', 'These details help us give a more useful estimate. Nothing here needs to be exact.', 'You’re in control. Check your answers before we put your first assessment together.'];
   const content = [homeForm, heatingForm, energyForm, review][state.step - 1]();
-  const panel = `<section class="form-panel"><p class="eyebrow">Step ${state.step} of 4</p><h1 id="page-title" tabindex="-1">${titles[state.step - 1]}</h1><p class="intro">${intros[state.step - 1]}</p>${errorSummary()}${state.step > 1 ? helperPrompt() : ''}<form id="home-form" novalidate>${content}<div class="form-actions"><button type="button" class="back-button" data-go="${returnToReview ? 4 : state.step - 1}"><span aria-hidden="true">←</span> ${returnToReview ? 'Cancel changes' : 'Back'}</button><button type="submit" class="button primary">${state.step === 4 ? 'See my assessment' : returnToReview ? 'Save changes' : state.step === 1 ? 'Continue to my heating' : 'Continue'} ${chevron}</button></div></form></section>`;
+  const panel = `<section class="form-panel"><p class="eyebrow">Step 2 of 2</p><h1 id="page-title" tabindex="-1">${titles[state.step - 1]}</h1><p class="intro">${intros[state.step - 1]}</p>${errorSummary()}${state.step > 1 ? helperPrompt() : ''}<form id="home-form" novalidate>${content}<div class="form-actions"><button type="button" class="back-button" data-go="${returnToReview ? 4 : state.step - 1}"><span aria-hidden="true">←</span> ${returnToReview ? 'Cancel changes' : 'Back'}</button><button type="submit" class="button primary">${state.step === 4 ? 'See my assessment' : returnToReview ? 'Save changes' : state.step === 1 ? 'Continue to my heating' : 'Continue'} ${chevron}</button></div></form></section>`;
   if (state.step === 4 && state.mode === 'developer') return `<main id="main" class="result-main rp">${progress()}<h1 id="page-title" tabindex="-1">Inputs and how they are used</h1>${devInputPanel()}
     <div class="form-actions"><button type="button" class="back-button" data-go="3">← Back</button><button type="button" class="button primary" data-go="5">See my assessment ${chevron}</button></div></main>`;
   if (state.step === 4 && state.mode === 'both') return `<main id="main" class="result-main split">${progress()}<div class="split-panes">
@@ -682,8 +695,160 @@ function render() {
   app.innerHTML = (state.step === 0 ? welcome() : state.step === 5 ? resultPage() : state.step === 6 ? confirmPage() : state.step === 7 ? whatIfPage() : formPage()) + `<dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">Start a new home check?</h2><p>This clears the active answers and uploads. Completed results stay in your assessment history on the homepage.</p><div class="dialog-actions"><button class="button secondary" data-cancel-reset autofocus>Keep my answers</button><button class="button primary" data-confirm-reset>Start a new check</button></div></dialog>`;
   document.title = `${state.step === 0 ? 'Heat pump home check' : ({ 5: 'Your first assessment', 6: 'Confirm your details', 7: 'What if' })[state.step] || steps[state.step - 1]} · nuuEnergy`;
 }
+
+// ---------- quick check: navigation and answers ----------
+let radFiles = { valve: null, side: null };
+const AUTO_ADVANCE = new Set(['heat_distribution', 'persons_in_household', 'energy_carrier', 'consumption', 'radiator_count', 'construction_year', 'video', 'area', 'renovation']);
+function qcShow(id) { state.q = id; state.qc.error = ''; save(); render(); document.querySelector('#page-title')?.focus(); window.scrollTo(0, 0); }
+function qcNext() {
+  if (state.qcReturn) { state.qcReturn = false; setStep(4); return; }
+  if (state.q === 'renovation') { qcAfterRenovation(); return; }
+  if (state.q === 'unusual') { qcFinish(); return; }
+  const next = nextId(state.q, state.answers, state.qc);
+  if (next) qcShow(next); else qcFinish();
+}
+function qcBack() {
+  if (state.qcReturn) { state.qcReturn = false; setStep(4); return; }
+  const prev = prevId(state.q, state.answers, state.qc);
+  if (prev) qcShow(prev); else setStep(0);
+}
+// Ranges, the video slot and B15 reasons are noted for the technician in building_notes (a contract key).
+function qcSyncNotes() {
+  const a = state.answers, qc = state.qc, lines = [];
+  const pick = (list, v) => (list.find(x => x[0] === v) || [])[1];
+  if (qc.consumptionRange && qc.consumptionRange !== 'unknown') lines.push(`Yearly use given as a range: ${pick([...CONSUMPTION_RANGES.oil.options, ...CONSUMPTION_RANGES.kwh.options], qc.consumptionRange)} (middle value used).`);
+  if (qc.radiatorRange && qc.radiatorRange !== 'unknown') lines.push(`Radiators given as a range: ${pick(RADIATOR_RANGES, qc.radiatorRange)} (middle value used).`);
+  if (qc.rad === 'unclear' || qc.rad === 'skipped') lines.push(qc.video && qc.video !== 'no' ? `Radiator connection unclear: video check requested (${qc.video}).` : 'Radiator connection unclear: technician must check.');
+  if (qc.b15.includes('unheated')) lines.push('Homeowner: some rooms are not heated.');
+  if (qc.b15.includes('area')) lines.push('Homeowner: the living area given may be wrong.');
+  if (qc.carrierOther) lines.push('Heating fuel: something other than gas, oil or LPG.');
+  if (qc.hotWaterAssumed) lines.push('Hot water assumed to come from the boiler (not asked).');
+  const marker = '[Quick check]';
+  const own = (a.building_notes || '').split('\n').filter(l => !l.startsWith(marker)).join('\n').trim();
+  a.building_notes = [own, ...lines.map(l => `${marker} ${l}`)].filter(Boolean).join('\n').slice(0, 3000);
+}
+async function qcAfterRenovation() {
+  if (state.answers.hot_water_via_heating === 'unknown' && !state.sample) { state.answers.hot_water_via_heating = 'yes'; state.qc.hotWaterAssumed = true; }
+  qcSyncNotes();
+  const q = state.qc;
+  if (!q.b15Shown) {
+    try {
+      const data = await assess(toCustomerInput(values()));
+      if (q !== state.qc) return;
+      if (data.outputs['01_heat_load'].heating_load_kw.consistent === false) { q.b15Shown = true; save(); qcShow('unusual'); return; }
+    } catch { /* the result page shows its own error */ }
+  }
+  if (q === state.qc) qcFinish();
+}
+function qcFinish() {
+  const a = state.answers, qc = state.qc;
+  if (a.hot_water_via_heating === 'unknown' && !state.sample) { a.hot_water_via_heating = 'yes'; qc.hotWaterAssumed = true; }
+  if (qc.b15.includes('stove')) a.other_heat_source = 'yes';
+  if (qc.b15.includes('renovated') && ['unknown', 'unrenovated'].includes(a.renovation_status)) a.renovation_status = 'partially';
+  qcSyncNotes(); state.sample = state.sample && state.sampleAnswers === JSON.stringify(a); save(); setStep(5);
+}
+function qcPick(name, value) {
+  const a = state.answers, qc = state.qc;
+  if (name === 'heat_distribution') { a.heat_distribution = value; qc.heatingAnswered = true; }
+  if (name === 'persons_in_household') a.persons_in_household = value;
+  if (name === 'energy_carrier') {
+    qc.carrierOther = value === 'other';
+    const next = value === 'other' ? 'unknown' : value;
+    if (next !== a.energy_carrier) { qc.consumptionRange = null; a.amount = ''; }
+    a.energy_carrier = next;
+  }
+  if (name === 'consumption') {
+    qc.consumptionRange = value;
+    const set = a.energy_carrier === 'oil' ? CONSUMPTION_RANGES.oil : CONSUMPTION_RANGES.kwh, opt = set.options.find(o => o[0] === value);
+    a.amount = opt ? String(opt[2]) : ''; a.unit = opt ? set.unit : 'kwh'; a.consumption_full_year = opt ? 'yes' : 'unknown';
+  }
+  if (name === 'radiator_count') { qc.radiatorRange = value; a.radiator_count = String((RADIATOR_RANGES.find(o => o[0] === value) || [])[2] || ''); }
+  if (name === 'construction_year') { qc.yearUnknown = value === 'unknown'; a.construction_year = value === 'unknown' ? '' : value; }
+  if (name === 'video') qc.video = value === 'unknown' ? 'no' : value;
+  if (name === 'area') { qc.areaUnknown = true; qc.areaTouched = false; a.floor_area_m2 = ''; }
+  if (name === 'renovation') { qc.renovationUnknown = true; qc.renovationTouched = false; a.renovation_status = 'unknown'; }
+  if (name === 'unusual') qc.b15 = value === 'unknown' ? ['unknown'] : qc.b15.includes(value) ? qc.b15.filter(v => v !== value) : [...qc.b15.filter(v => v !== 'unknown'), value];
+  save();
+  if (AUTO_ADVANCE.has(name) && !(name === 'video' && value === 'unknown')) qcNext(); else { render(); document.querySelector(`[data-qc-pick="${name}"][data-value="${value}"]`)?.focus(); }
+}
+function qcRange(kind, raw) {
+  const a = state.answers, qc = state.qc;
+  if (kind === 'area') { a.floor_area_m2 = String(raw); qc.areaTouched = true; qc.areaUnknown = false; }
+  if (kind === 'renovation') { a.renovation_status = RENOVATION[Number(raw)][0]; qc.renovationTouched = true; qc.renovationUnknown = false; }
+  save();
+  const el = document.querySelector(`#qc-${kind}`), label = kind === 'area' ? `${Number(raw) >= 300 ? '300+' : raw} m²` : RENOVATION[Number(raw)][1];
+  el?.classList.remove('untouched'); el?.setAttribute('aria-valuetext', label);
+  document.querySelector('.qc-slider-value').textContent = label;
+  document.querySelector('[data-qc-next]')?.removeAttribute('disabled');
+  document.querySelector(`[data-qc-pick="${kind}"]`)?.classList.remove('selected');
+}
+// Phones often call every photo image.jpg; give each upload its own name so sources stay apart.
+function qcRename(file, base) {
+  const ext = (/\.[a-z0-9]+$/i.exec(file.name) || [''])[0] || ({ 'application/pdf': '.pdf', 'image/png': '.png', 'image/webp': '.webp' }[file.type] || '.jpg');
+  return new File([file], base + ext.toLowerCase(), { type: file.type });
+}
+const carrierText = v => ({ gas: 'natural gas', oil: 'heating oil', lpg: 'LPG', electric: 'electricity', district: 'district heating' }[v] || 'your fuel');
+const typeText = v => ({ 11: 'one-panel radiator (type 11)', 22: 'two-panel radiator (type 22)', 33: 'three-panel radiator (type 33)' }[v]);
+async function qcReadBill(file) {
+  const qc = state.qc;
+  try { validateFiles([file]); } catch (error) { qc.error = error.message; render(); return; }
+  qc.bill = 'reading'; qc.error = ''; render();
+  try {
+    await saveFiles([file]);
+    if (qc !== state.qc) return;
+    if (uploadSave?.status === 'error') throw new Error(uploadSave.error);
+    const result = await extractFiles([file], { customer_id: customerId(), questionnaire: toCustomerInput(values()) });
+    if (qc !== state.qc) return;
+    state.evidenceLedger = result;
+    const f = result.fields || {}, kwh = f.annual_consumption_kwh?.value;
+    if (!kwh) throw new Error('We could not find the yearly energy use on this page. Try a clearer photo, or skip.');
+    const carrier = f.energy_carrier?.value || state.answers.energy_carrier;
+    qc.billFields = { fields: f, amountText: `${formatNumber(kwh)} kWh`, carrierText: carrierText(carrier) };
+    qc.bill = 'review';
+  } catch (error) { if (qc !== state.qc) return; qc.bill = 'pending'; qc.error = error.message || 'The bill could not be read. You can skip this step.'; }
+  save(); if (state.step === 1 && state.q === 'bill') render();
+}
+async function qcReadRadiator() {
+  const qc = state.qc, files = [radFiles.valve, radFiles.side].filter(Boolean);
+  if (!files.length) return;
+  qc.rad = 'reading'; qc.error = ''; render();
+  try {
+    await saveFiles(files);
+    if (qc !== state.qc) return;
+    if (uploadSave?.status === 'error') throw new Error(uploadSave.error);
+    const result = await extractFiles(files, { customer_id: customerId(), questionnaire: toCustomerInput(values()) });
+    if (qc !== state.qc) return;
+    state.evidenceLedger = result;
+    const f = result.fields || {}, type = f.radiator_type?.value;
+    if (!type) { qc.rad = 'unclear'; qc.radFields = { fields: f }; save(); qcNext(); return; }
+    qc.radFields = { fields: f, typeText: typeText(type), pipeText: f.pipe_system?.value ? (f.pipe_system.value === 'single-pipe' ? 'single-pipe connection' : 'two-pipe connection') : '' };
+    qc.rad = 'review';
+  } catch (error) { if (qc !== state.qc) return; qc.rad = 'pending'; qc.error = error.message || 'The photos could not be read. You can skip this step.'; }
+  save(); if (state.step === 1 && state.q === 'radiator_photos') render();
+}
+function qcKeepEvidence(fields, keys) {
+  state.answers = applyFields(state.answers, fields, keys);
+  const normalized = values(); state.evidence ||= {};
+  for (const key of keys) if (fields[key]?.value !== null && fields[key]?.value !== undefined) state.evidence[key] = { ...fields[key], value: normalized[key] };
+  state.sample = false;
+}
+function qcConfirm(yes) {
+  const qc = state.qc;
+  if (state.q === 'bill') {
+    if (yes) {
+      const f = qc.billFields.fields, keys = ['annual_consumption_kwh', 'energy_carrier', 'consumption_full_year', 'hot_water_via_heating'].filter(k => f[k]?.value !== null && f[k]?.value !== undefined);
+      qcKeepEvidence(f, keys); qc.bill = 'confirmed'; qc.consumptionRange = null; qc.carrierOther = false;
+    } else qc.bill = 'rejected';
+  }
+  if (state.q === 'radiator_photos') {
+    if (yes) { qcKeepEvidence(qc.radFields.fields, ['radiator_type', 'pipe_system'].filter(k => qc.radFields.fields[k]?.value)); qc.rad = 'confirmed'; }
+    else qc.rad = 'unclear';
+  }
+  save(); qcNext();
+}
 app.addEventListener('input', event => {
   const el = event.target;
+  if (el.dataset?.qcRange) { qcRange(el.dataset.qcRange, el.value); return; }
   if (el.name && Object.hasOwn(state.answers, el.name)) { state.answers[el.name] = el.value; document.querySelectorAll(`[data-evidence-for="${el.name}"]`).forEach(b => b.remove()); save(); }
   if (el.name?.startsWith('wi:')) {
     const key = el.name.slice(3), p = whatIf.data.params.find(x => x.key === key), label = p.labels[Number(el.value)];
@@ -695,6 +860,11 @@ app.addEventListener('input', event => {
 app.addEventListener('change', event => {
   const el = event.target;
   if (el.id === 'evidence-files') { chooseFiles([...el.files]); return; }
+  if (el.dataset?.qcFile) {
+    const file = el.files[0]; if (!file) return;
+    if (el.dataset.qcFile === 'bill') { qcReadBill(qcRename(file, 'heating-bill')); return; }
+    radFiles[el.dataset.qcFile] = qcRename(file, `radiator-${el.dataset.qcFile}`); state.qc.photos[el.dataset.qcFile] = file.name; state.qc.error = ''; render(); return;
+  }
   if (el.name && Object.hasOwn(state.answers, el.name)) {
     state.answers[el.name] = el.value;
     if (el.name === 'energy_carrier') { state.answers.unit = 'kwh'; state.answers.amount = ''; }
@@ -724,10 +894,10 @@ function customerId() {
   return state.answers.building_id;
 }
 async function saveFiles(files) {
-  const id = customerId();
+  const id = customerId(), generation = uploadGeneration;
   uploadSave = { status: 'saving', customerId: id };
-  try { const saved = await uploadFiles(id, files); uploadSave = { status: 'saved', customerId: id, paths: saved.saved, duplicates: saved.duplicates || 0 }; }
-  catch (error) { uploadSave = { status: 'error', customerId: id, error: error.message }; }
+  try { const saved = await uploadFiles(id, files); if (generation !== uploadGeneration) return; uploadSave = { status: 'saved', customerId: id, paths: saved.saved, duplicates: saved.duplicates || 0 }; }
+  catch (error) { if (generation !== uploadGeneration) return; uploadSave = { status: 'error', customerId: id, error: error.message }; }
   if (state.step === 1) render();
   announce(uploadSave.status === 'saved' ? `Files saved to customer folder ${id}.` : `The files could not be saved. ${uploadSave.error}`);
 }
@@ -767,27 +937,35 @@ app.addEventListener('click', async event => {
     if (!entry) return;
     resetActive();
     const restored = JSON.parse(JSON.stringify(entry));
-    state = { ...state, ...restored.state }; assessment = restored.assessment;
+    state = { ...state, ...restored.state, qc: { ...emptyQc(), ...(restored.state.qc || {}), photos: { valve: null, side: null } } }; assessment = restored.assessment;
     whatIf = restored.whatIf || { processed: null };
     setStep(state.step === 7 && restored.whatIf ? 7 : 5);
     announce('Saved assessment opened.'); return;
   }
-  if (button.hasAttribute('data-start-ai') || button.hasAttribute('data-add-evidence')) {
-    if (assessment.data?.follow_up?.id.startsWith('conflict:') && state.evidenceLedger) extraction = { status: 'done', result: state.evidenceLedger, error: '' };
-    homeDetailsOpen = false; returnToReview = false; editSnapshot = null; setStep(1);
+  if (button.dataset.qcPick) { qcPick(button.dataset.qcPick, button.dataset.value); return; }
+  if (button.hasAttribute('data-qc-next')) { qcNext(); return; }
+  if (button.hasAttribute('data-qc-back')) { qcBack(); return; }
+  if (button.dataset.qcSkip) { state.qc[button.dataset.qcSkip] = 'skipped'; save(); qcNext(); return; }
+  if (button.dataset.qcConfirm) { qcConfirm(button.dataset.qcConfirm === 'yes'); return; }
+  if (button.hasAttribute('data-qc-read-radiator')) { qcReadRadiator(); return; }
+  if (button.dataset.qcEdit) { state.qcReturn = true; state.q = button.dataset.qcEdit; setStep(1); return; }
+  if (button.dataset.qcStep) {
+    const el = document.querySelector('#qc-area'), v = Math.min(300, Math.max(50, (state.qc.areaTouched ? Number(el.value) : 150) + Number(button.dataset.delta)));
+    el.value = v; qcRange('area', v); return;
   }
+  if (button.hasAttribute('data-start-ai') || button.hasAttribute('data-start-manual')) { returnToReview = false; editSnapshot = null; state.qcReturn = false; state.q = 'heating'; setStep(1); }
+  if (button.hasAttribute('data-add-evidence')) { returnToReview = false; editSnapshot = null; state.qcReturn = false; state.qc.bill = 'pending'; state.q = 'bill'; setStep(1); }
   if (button.hasAttribute('data-answer-followup')) {
+    // Follow-up questions now open the matching quick-check screen; conflicts between files open the review page.
     const question = assessment.data?.follow_up;
     if (question) {
-      if (question.id.startsWith('conflict:') && state.evidenceLedger) extraction = { status: 'done', result: state.evidenceLedger, error: '' };
-      homeDetailsOpen = true; setStep(question.step);
-      const target = document.getElementById(question.target) || document.querySelector(`[name="${question.target}"]`);
-      if (target?.closest('details')) target.closest('details').open = true;
-      target?.focus(); target?.scrollIntoView({block: 'center'});
+      const QC_FOR = { floor_area_m2: 'area', construction_year: 'year', renovation_status: 'renovation', heat_distribution: 'heating', energy_carrier: 'carrier', amount: 'consumption', annual_consumption_kwh: 'consumption', consumption_full_year: 'consumption', persons_in_household: 'persons', radiator_count: 'radiator_count', radiator_type: 'radiator_photos', pipe_system: 'radiator_photos' };
+      const target = QC_FOR[question.target];
+      if (target && !question.id.startsWith('conflict:')) { state.qcReturn = true; state.q = visible(state.answers, state.qc).some(q => q.id === target) ? target : 'heating'; setStep(1); }
+      else setStep(4);
     }
   }
   if (button.hasAttribute('data-skip-followup')) { state.skippedQuestion = `${assessment.key}:${assessment.data.follow_up.id}`; save(); render(); announce('This detail stays open for a professional to check.'); }
-  if (button.hasAttribute('data-start-manual')) { homeDetailsOpen = true; setStep(1); document.querySelector('#manual-home-details')?.scrollIntoView({ block: 'start' }); }
   if (button.hasAttribute('data-manual-details')) {
     homeDetailsOpen = true; const details = document.querySelector('#manual-home-details');
     if (details) { details.open = true; details.scrollIntoView({ block: 'start' }); document.querySelector('#floor_area_m2')?.focus(); }
