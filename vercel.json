@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "python3 scripts/build_vercel.py",
+  "buildCommand": "node scripts/build.js",
   "outputDirectory": "dist",
   "functions": {
     "api/index.py": {
@@ -9,10 +9,10 @@
       "includeFiles": [
         "scripts/**",
         "src/decision_engine/**",
-        "data/demo/**",
-        "data/customers/**",
-        "data/customer/**",
-        "data/raw/**"
+        "data/demo/B-0*/**",
+        "data/customers/D-B*/**",
+        "data/customer/demo/**",
+        "data/raw/buildings/**"
       ],
       "excludeFiles": [
         "**/__pycache__/**",

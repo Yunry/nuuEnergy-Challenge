@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "python3 scripts/serve.py",
     "start": "python3 scripts/serve.py",
-    "build": "python3 scripts/build_vercel.py",
+    "build": "node scripts/build.js",
     "test": "python3 -m unittest discover -s tests -v && node --test tests/extraction.test.js"
   }
 }

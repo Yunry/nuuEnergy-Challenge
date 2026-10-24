@@ -1,4 +1,5 @@
 """Vercel entrypoint for the same API used by scripts/serve.py locally."""
+import json
 import os
 from pathlib import Path
 import sys
