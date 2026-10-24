@@ -736,7 +736,15 @@ function render() {
   rememberAssessment();
   document.documentElement.classList.toggle('larger-text', state.larger);
   document.querySelector('#text-size').setAttribute('aria-pressed', String(state.larger));
-  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
+  // The developer views open only once a result exists (step 5 and later); before that everyone sees the customer view.
+  const devLocked = state.step < 5;
+  if (devLocked && state.mode !== 'customer') state.mode = 'customer';
+  document.querySelectorAll('[data-mode]').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode));
+    const lock = devLocked && b.dataset.mode !== 'customer';
+    b.disabled = lock; b.classList.toggle('mode-locked', lock);
+    b.title = lock ? 'Available once your result is ready' : '';
+  });
   app.innerHTML = (state.step === 0 ? welcome() : state.step === 5 ? resultPage() : state.step === 6 ? confirmPage() : state.step === 7 ? whatIfPage() : formPage()) + `<dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">Start a new home check?</h2><p>This clears the active answers and uploads. Completed results stay in your assessment history on the homepage.</p><div class="dialog-actions"><button class="button secondary" data-cancel-reset autofocus>Keep my answers</button><button class="button primary" data-confirm-reset>Start a new check</button></div></dialog>`;
   document.title = `${state.step === 0 ? 'Heat pump home check' : ({ 5: 'Your first assessment', 6: 'Confirm your details', 7: 'What if' })[state.step] || steps[state.step - 1]} · nuuEnergy`;
 }
