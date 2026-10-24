@@ -142,7 +142,7 @@ function welcome() {
       <article class="entrance"><p class="entrance-kicker">1 · Your home</p><h2>Help me check my home</h2>
         <p>Answer a few questions, with AI help for bills and photos. Your answers are saved as a JSON file in your own customer folder.</p>
         <ul class="welcome-benefits"><li>${tick}No technical knowledge needed</li><li>${tick}It’s fine if you don’t know every answer</li><li>${tick}About 3 minutes · no sign-up</li></ul>
-        <button class="button primary start-button" data-start-ai>Help me check my home ${chevron}</button><button class="back-button manual-start" data-start-manual>I’d rather answer the questions myself →</button></article>
+        <button class="button primary start-button" data-start-ai>Help me check my home ${chevron}</button></article>
       <article class="entrance"><p class="entrance-kicker">2 · Just have a look</p><h2>Example homes and live demo</h2>
         <p>Five real, anonymised homes, a saved photo assessment, or a live demo where each upload updates the result.</p>
         <div class="sample-list">${homes}</div>

@@ -37,5 +37,6 @@ Welcome page → **Just have a look** → **Live demo** opens http://127.0.0.1:4
 (`data/demo/B-Live/`, git-ignored) with B-05's stored questionnaire and no documents. Upload photo 07 (unchanged), then
 photo 05 (narrowed to possible). Each upload becomes a step in `data/demo/B-Live/steps/` with the file, the JSON read
 from it, the new result and a technician report. Demo files are recognised by content via the register; any other file
-goes to the real AI extraction when `OPENAI_API_KEY` is set (`.env`). `/?demo=B-Live` opens the full result and
+goes to the real AI extraction when `OPENAI_API_KEY` is set (`.env`). The demo files live in git, so any host running the repo
+has them; on a phone or any other device, **Use this file** (live page) adds the server's copy, no file needed on the device. `/?demo=B-Live` opens the full result and
 what-if for the latest step.

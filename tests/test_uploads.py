@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 import ai_extract  # noqa: E402
-from serve import known_facts, live_reset, live_start, live_state, live_upload, save_uploads  # noqa: E402
+from serve import demo_file, demo_files, known_facts, live_reset, live_start, live_state, live_upload, live_use_demo, save_uploads  # noqa: E402
 
 DEMO_DOCS = Path(__file__).resolve().parents[1] / "data" / "customer" / "demo"  # the live-demo upload files
 
@@ -93,6 +93,15 @@ class LiveDemo(unittest.TestCase):
                                     .read_text())["fields"]["heat_distribution"]["value"], "mixed")  # one photo doesn't change the system
         self.assertFalse(live_reset(self.folder)["started"])
         self.assertFalse(self.folder.exists())
+
+    def test_a_device_without_the_files_can_use_the_servers_demo_files(self):
+        self.assertEqual({f["name"] for f in demo_files()} >= {self.CLEAR, self.UNCLEAR}, True)
+        self.assertIsNone(demo_file("../../.env"))  # only files listed in the register
+        live_start(self.folder)
+        state = live_use_demo({"name": self.CLEAR}, self.folder)
+        self.assertEqual(state["latest"]["flow"]["required"], [42, 61])
+        with self.assertRaises(ai_extract.ExtractionError):
+            live_use_demo({"name": "secret.pdf"}, self.folder)
 
     def test_register_reads_demo_files_by_content_only(self):
         facts, note = known_facts("renamed.jpg", (DEMO_DOCS / self.CLEAR).read_bytes())
