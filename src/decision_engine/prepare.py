@@ -68,7 +68,7 @@ def fields(ci):
                     and isinstance(item.get('evidence'), str)):
                 current = f[key]['confidence']
                 ranks = {'high': 0, None: 0, 'medium': 1, 'low': 2}
-                confidence = max((current, item['confidence']), key=lambda c: ranks[c])
+                confidence = max((current or 'high', item['confidence']), key=lambda c: ranks[c])
                 f[key].update(source='confirmed_upload.' + item['source_file'][:200],
                               confidence=confidence, evidence=item['evidence'][:1500])
     return f

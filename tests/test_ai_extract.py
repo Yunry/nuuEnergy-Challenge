@@ -119,7 +119,9 @@ class LocalHTTP(unittest.TestCase):
             with urllib.request.urlopen(req) as response:
                 return response.status, response.read()
         except urllib.error.HTTPError as error:
-            return error.code, error.read()
+            body = error.read()
+            self.assertEqual(int(error.headers['Content-Length']), len(body))
+            return error.code, body
 
     def test_upstream_demo_routes_keep_all_five_examples_working(self):
         for i in range(1, 6):

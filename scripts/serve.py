@@ -36,6 +36,8 @@ import prepare  # noqa: E402
 import scenarios  # noqa: E402
 from evaluate import evaluate  # noqa: E402
 import ai_extract  # noqa: E402
+import evidence_store  # noqa: E402
+import evidence_workflow  # noqa: E402
 from run_engine import DEMO, load_steps  # noqa: E402
 
 ai_extract.load_env(ROOT / '.env')
@@ -71,16 +73,23 @@ def save_uploads(body, demo=DEMO):
         raise ai_extract.ExtractionError("Unknown customer folder.")
     ai_extract.validate_files(body)  # same count, size, format and content checks as AI extraction
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    saved = []
+    saved, duplicates = [], 0
     for f in body["files"]:
         folder = demo / customer_id / "raw" / UPLOAD_FOLDER[f["type"]]
         folder.mkdir(parents=True, exist_ok=True)
-        path = folder / f"{stamp}_{safe_name(f['name'])}"
-        path.write_bytes(base64.b64decode(f["data"]))
+        data = base64.b64decode(f['data'])
+        digest = hashlib.sha256(data).hexdigest()
+        existing = next((p for sub in ('documents', 'photos') for p in (demo / customer_id / 'raw' / sub).glob('*')
+                         if p.is_file() and hashlib.sha256(p.read_bytes()).hexdigest() == digest), None)
+        path = existing or folder / f"{stamp}_{digest[:12]}_{safe_name(f['name'])}"
+        if existing:
+            duplicates += 1
+        else:
+            path.write_bytes(data)
         saved.append(str(path.relative_to(demo.parent.parent)))
     for sub in ("processed", "output"):
         (demo / customer_id / sub).mkdir(exist_ok=True)
-    return {"customer_id": customer_id, "saved": saved}
+    return {"customer_id": customer_id, "saved": saved, "duplicates": duplicates}
 
 
 # Live demo: data/demo/B-Live starts empty; Start adds B-03's input as step 00, every upload adds the next step.
@@ -145,13 +154,22 @@ FILE_TYPES = {".pdf": "application/pdf", ".jpg": "image/jpeg", ".jpeg": "image/j
 
 
 def assess(customer_input):
-    """Intake rule: a browser customer's questionnaire, processed data and decision are saved in its folder."""
+    """Intake, followed by evidence reconciliation and a deterministic next useful question."""
     intake.check_questionnaire(customer_input)
-    customer_id = customer_input.get("building_id")
+    customer_id = customer_input.get('building_id')
+    conflicts = []
     if isinstance(customer_id, str) and NEW_CUSTOMER.fullmatch(customer_id):
-        return intake.run(DEMO / customer_id, customer_input)
-    steps = prepare.run(customer_input)
-    return {"processed": steps, "outputs": engine.run(customer_id or "HOME", steps)}
+        folder = DEMO / customer_id
+        result = intake.run(folder, customer_input)
+        records = evidence_store.load_records(folder)
+        if records:
+            conflicts = evidence_workflow.merge(records, customer_input)['conflicts']
+    else:
+        steps = prepare.run(customer_input)
+        result = {'processed': steps, 'outputs': engine.run(customer_id or 'HOME', steps)}
+    result['follow_up'] = evidence_workflow.next_question(customer_input, result, conflicts)
+    result['evidence_conflicts'] = conflicts
+    return result
 
 
 FOLDER_ID = r"B-\d+|B-Live|C-\d{8}-[0-9a-f]{4}"
@@ -174,19 +192,23 @@ def customer_files(customer_id, limit=ai_extract.MAX_FILES):
 
 
 def extract(body):
-    """Intake rule, step 3: the questionnaire plus the customer's saved files go to the LLM; the result is saved."""
-    customer_id, questionnaire = body.get("customer_id"), body.get("questionnaire")
+    """Extract only new files, retain all earlier observations, and reconcile without an LLM call."""
+    customer_id, questionnaire = body.get('customer_id'), body.get('questionnaire') or {}
+    intake.check_questionnaire(questionnaire)
     if not (isinstance(customer_id, str) and NEW_CUSTOMER.fullmatch(customer_id)):
         return ai_extract.extract(body, questionnaire)
-    files = customer_files(customer_id) or body.get("files")
-    result = ai_extract.extract({"files": files}, questionnaire)
-    intake.save_extraction(DEMO / customer_id, {"files": [f["name"] for f in files], **result})
+    folder = DEMO / customer_id
+    intake.write(folder / 'raw' / 'questionnaire.json', questionnaire)
+    result = evidence_store.extract_customer(folder, body, questionnaire)
+    intake.save_extraction(folder, {'files': [d['name'] for d in result['documents']], **result})
     return result
 
 
 class Handler(BaseHTTPRequestHandler):
     def send(self, code, body, content_type="text/plain; charset=utf-8"):
         self.send_response(code)
+        # Frame responses even when an upload is rejected before its body is read.
+        self.send_header("Content-Length", str(len(body)))
         for k, v in (("Content-Type", content_type), ("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff"), ("Referrer-Policy", "no-referrer")):
             self.send_header(k, v)
         self.end_headers()

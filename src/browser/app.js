@@ -1,17 +1,18 @@
+import { resolveReview, clearUnknownAnswers } from './evidence.js';
 import { assess, demo, scenarios, toCustomerInput } from './assessment.js';
 import { extractFiles, applyFields, fieldLabels, uploadFiles, validateFiles } from './extraction.js';
 
 const app = document.querySelector('#app');
 const storageKey = 'nuu-home-check-v1';
 const empty = () => ({ construction_year: '', floor_area_m2: '', renovation_status: 'unknown', energy_carrier: 'unknown', heat_distribution: 'unknown', amount: '', unit: 'kwh', consumption_full_year: 'unknown', persons_in_household: '', hot_water_via_heating: 'unknown', flow_temperature_c: '', pipe_system: 'unknown', radiator_count: '', radiator_type: 'unknown', other_heat_source: 'unknown', solar_thermal: 'unknown', building_notes: '', building_id: 'HOME' });
-let state = { step: 0, answers: empty(), larger: false, sample: false, evidence: {}, confirm: {}, mode: 'both' };
+let state = { step: 0, answers: empty(), larger: false, sample: false, evidence: {}, evidenceReviews: {}, evidenceLedger: null, confirm: {}, mode: 'both' };
 try {
   const saved = JSON.parse(sessionStorage.getItem(storageKey));
   if (saved?.answers && Number.isInteger(saved.step) && saved.step >= 0 && saved.step <= 7) state = { ...state, ...saved, answers: { ...empty(), ...saved.answers } };
 } catch { /* Storage is optional; the flow still works in memory. */ }
 let errors = {}, returnToReview = false, editSnapshot = null, samples = [], sampleError = '';
 let extraction = { status: 'idle', result: null, error: '' }, aiAvailable = null, uploadGeneration = 0;
-let chosenFiles = [], homeDetailsOpen = false, addedCount = 0, uploadSave = null;
+let chosenFiles = [], homeDetailsOpen = false, addedCount = 0, uploadSave = null, uploadPromise = Promise.resolve();
 const steps = ['Your home', 'Your heating', 'Your energy use', 'Check your answers'];
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const chevron = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>';
@@ -91,26 +92,47 @@ function displayFact(key, value) {
   const units = { annual_consumption_kwh: ' kWh', floor_area_m2: ' m²', flow_temperature_c: ' °C' };
   return (typeof value === 'number' ? formatNumber(value) : String(value)) + (units[key] || '');
 }
+function periodText(billing) {
+  if (!billing) return '';
+  const dates = [billing.start_date, billing.end_date].filter(Boolean).join(' → ');
+  const amount = billing.consumption_amount == null ? '' : `${formatNumber(billing.consumption_amount)} ${{ kwh: 'kWh', litres: 'litres', m3: 'm³' }[billing.consumption_unit] || ''}`;
+  return [dates, amount, billing.days ? `${billing.days} days` : ''].filter(Boolean).join(' · ');
+}
+function conflictsPanel(result) {
+  if (!result?.conflicts?.length) return '';
+  return `<section class="evidence-conflicts" aria-labelledby="conflicts-title"><h3 id="conflicts-title">Let’s settle ${result.conflicts.length === 1 ? 'one difference' : 'these differences'} first.</h3><p>Your earlier answers and files are kept. Choose what applies to this home; we won’t combine different years of bills.</p>${result.conflicts.map(c => `<fieldset class="conflict-field"><legend>${escape(c.question)}</legend>${c.candidates.map(f => `<label class="conflict-choice"><input type="radio" name="conflict:${escape(c.field)}" value="${escape(f.id)}"><span><strong>${escape(displayFact(c.field, f.value))}</strong><small>${escape(f.source_file)}${f.page ? ` · page ${f.page}` : ''}</small>${periodText(f.billing) ? `<small>${escape(periodText(f.billing))}</small>` : ''}<span>${escape(f.evidence)}</span></span></label>`).join('')}${c.current_value !== null ? `<label class="conflict-choice"><input type="radio" name="conflict:${escape(c.field)}" value="answer"><span>Keep my answer: ${escape(displayFact(c.field, c.current_value))}</span></label>` : ''}<label class="conflict-choice"><input type="radio" name="conflict:${escape(c.field)}" value="unknown"><span>Leave this unknown for a professional to check</span></label></fieldset>`).join('')}<p class="field-error" id="conflict-error" role="alert"></p></section>`;
+}
+function historyPanel() {
+  const ledger = state.evidenceLedger;
+  if (!ledger?.documents?.length) return '';
+  return `<details class="evidence-history"><summary>Your evidence history · ${ledger.documents.length} ${ledger.documents.length === 1 ? 'file' : 'files'}</summary><p class="small">These are observations from files. Only details you choose are used in the assessment.</p>${ledger.documents.map(d => `<article><strong>${escape(d.name)}</strong>${periodText(d.billing) ? `<p>${escape(periodText(d.billing))}</p>` : ''}<ul>${(ledger.observations || []).filter(o => o.file_id === d.id).map(o => `<li>${escape(fieldLabels[o.field] || o.field)}: ${escape(displayFact(o.field, o.value))}<br><small>${escape(o.evidence)}</small></li>`).join('') || '<li>No usable assessment details found.</li>'}</ul></article>`).join('')}</details>`;
+}
+function followUpPanel() {
+  const question = assessment.data?.follow_up;
+  if (!question) return '';
+  if (state.skippedQuestion === `${assessment.key}:${question.id}`) return '<p class="review-reassurance">We’ll keep that detail open for a heating professional to check. Your current assessment still uses the available evidence.</p>';
+  return `<section class="next-question focused-question"><p class="eyebrow">Your next useful question</p><h2>${escape(question.title)}</h2><p>${escape(question.reason)}</p><p class="small">${escape(question.upload_hint)}</p><div class="next-step-actions"><button class="button primary" data-add-evidence>Add supporting evidence ${sparkle}</button><button class="back-button" data-answer-followup>Answer this myself →</button><button class="back-button" data-skip-followup>I don’t know</button></div></section>`;
+}
 function uploadPanel() {
   const result = extraction.result, busy = extraction.status === 'loading';
   const facts = Object.entries(result?.fields || {}).filter(([, f]) => f.value !== null);
   return `<section class="upload-panel" aria-labelledby="upload-title">
     <div class="assistant-heading"><span class="assistant-icon">${sparkle}</span><div><p class="assistant-kicker">Your home check helper</p><h2 id="upload-title">Let’s find the details for you.</h2></div><span class="ai-label">AI assisted</span></div>
     <p class="assistant-intro">A bill or photo is a good place to start. You’ll check anything we find before it’s used.</p>
-    <ol class="assistant-steps" aria-label="How the helper works"><li class="${!result && !addedCount ? 'active' : ''}"><span>1</span> Add files</li><li class="${result ? 'active' : ''}"><span>2</span> Check details</li><li class="${!result && addedCount ? 'active' : ''}"><span>3</span> Fill the gaps</li></ol>
+    <ol class="assistant-steps" aria-label="How the helper works"><li class="${!result && (!addedCount || chosenFiles.length) ? 'active' : ''}"><span>1</span> Add files</li><li class="${result ? 'active' : ''}"><span>2</span> Check details</li><li class="${!result && addedCount && !chosenFiles.length ? 'active' : ''}"><span>3</span> Fill the gaps</li></ol>
     ${addedCount ? `<div class="upload-success" id="upload-confirmed" tabindex="-1"><strong>✓ ${addedCount} ${addedCount === 1 ? 'detail added' : 'details added'} to your answers</strong><p>We’ll carry these through the check. You can change them at any time.</p><button type="submit" class="button primary">${returnToReview ? 'Back to my answers' : 'Continue to my heating'} ${chevron}</button></div>` : ''}
     ${aiAvailable === false ? '<p class="upload-unavailable" role="status">The AI helper is unavailable on this server. You can use the questions below.</p>' : ''}
-    ${!result ? `${addedCount ? '<details class="add-more-files"><summary>Add another bill or photo</summary>' : ''}<div class="drop-zone" id="upload-drop-zone">
+    ${!result ? `${addedCount ? `<details class="add-more-files" ${chosenFiles.length || busy ? 'open' : ''}><summary>Add another bill or photo</summary>` : ''}<div class="drop-zone" id="upload-drop-zone">
       <input class="sr-only" id="evidence-files" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple aria-describedby="upload-formats" ${busy ? 'disabled' : ''}>
       <label for="evidence-files"><span class="upload-arrow" aria-hidden="true">↑</span><strong>${chosenFiles.length ? 'Add or replace files' : 'Choose a bill or photo'}</strong><span>or drag files here</span></label>
       <p id="upload-formats">PDF, JPG, PNG or WebP · 3 files max · 10 MB total</p></div>
       ${chosenFiles.length ? `<ul class="chosen-files" aria-label="Selected files">${chosenFiles.map((f, i) => `<li><span class="file-kind" aria-hidden="true">${f.type === 'application/pdf' || /\.pdf$/i.test(f.name) ? 'PDF' : 'IMG'}</span><span><strong>${escape(f.name)}</strong><small>${formatNumber(f.size / 1024)} KB</small></span><button type="button" class="file-remove" data-remove-file="${i}" aria-label="Remove ${escape(f.name)}" ${busy ? 'disabled' : ''}>×</button></li>`).join('')}</ul>` : '<div class="upload-examples"><span>Useful files</span><p>Heating bill <b>·</b> Radiator photo <b>·</b> Property document</p></div>'}
-      ${uploadSave ? `<p class="upload-saved ${uploadSave.status}" role="status">${uploadSave.status === 'saving' ? 'Saving to your customer folder…' : uploadSave.status === 'saved' ? `✓ Saved to customer folder <strong>${escape(uploadSave.customerId)}</strong>: ${uploadSave.paths.map(x => `<code>${escape(x)}</code>`).join(', ')}` : `Could not save the files: ${escape(uploadSave.error)}`}</p>` : ''}
+      ${uploadSave ? `<p class="upload-saved ${uploadSave.status}" role="status">${uploadSave.status === 'saving' ? 'Saving to your customer folder…' : uploadSave.status === 'saved' ? `✓ ${uploadSave.paths.length} ${uploadSave.paths.length === 1 ? 'file saved' : 'files saved'} with your home details${uploadSave.duplicates ? ` · ${uploadSave.duplicates} already saved, no duplicate copy needed` : ''}` : `Could not save the files: ${escape(uploadSave.error)}`}</p>` : ''}
       <button type="button" class="button primary extract-button" data-extract ${busy || !chosenFiles.length || aiAvailable === false ? 'disabled' : ''}>${busy ? '<span class="reading-dot" aria-hidden="true"></span> Reading your files…' : `Find my home details ${sparkle}`}</button>
       ${busy ? '<p class="reading-status" role="status">Checking your files for heating and home details. This may take up to 90 seconds.</p><button type="button" class="back-button" data-cancel-extraction>Continue without waiting</button>' : ''}
       <div class="upload-privacy"><p>Your files are saved to your customer folder on this server. They are sent to OpenAI only when you choose “Find my home details”.</p><details class="privacy-details"><summary>Before you upload</summary><p>Cover personal details such as your name, address and account number. A clear photo or the relevant pages of your bill are enough.</p></details></div>${addedCount ? '</details>' : ''}` : ''}
     ${extraction.error ? `<div role="alert" class="upload-error"><strong>Let’s try another way.</strong><p>${escape(extraction.error)}</p><button type="button" class="back-button" data-manual-details>Enter my details instead →</button></div>` : ''}
-    ${result ? `<div class="extraction-review" id="extraction-review" tabindex="-1"><div class="review-heading"><h3>${facts.length ? `We found ${facts.length} ${facts.length === 1 ? 'detail' : 'details'}. Take a quick look.` : 'We couldn’t read enough details.'}</h3><p>${facts.length ? 'Tick the details you want to use. We’ve left uncertain readings and changes to your existing answers for you to check.' : 'Try a clearer image, or continue with the questions below.'}</p></div>
+    ${result ? `<div class="extraction-review" id="extraction-review" tabindex="-1">${conflictsPanel(result)}<div class="review-heading"><h3>${facts.length ? `We have ${facts.length} ${facts.length === 1 ? 'detail' : 'details'}. Take a quick look.` : 'We couldn’t read enough details.'}</h3><p>${facts.length ? 'Tick the details you want to use. We’ve left uncertain readings and changes to your existing answers for you to check.' : 'Try a clearer image, or continue with the questions below.'}</p></div>
       ${facts.map(([key, f]) => {
         const current = key === 'annual_consumption_kwh' ? state.answers.amount : state.answers[key];
         const checked = f.confidence === 'high' && (!current || current === 'unknown');
@@ -118,17 +140,19 @@ function uploadPanel() {
         return `<article class="fact-card ${f.confidence !== 'high' ? 'needs-check' : ''}"><label class="fact-choice"><input type="checkbox" data-extracted-key="${escape(key)}" ${checked ? 'checked' : ''}><span><span class="fact-title">${escape(fieldLabels[key] || key)}</span><strong>${escape(displayFact(key, f.value))}</strong></span><span class="fact-status">${checkLabel}</span></label>
           ${current && current !== 'unknown' ? `<p class="existing-answer">Your answer: ${escape(key === 'annual_consumption_kwh' ? (Number.isFinite(parseNumber(current)) ? formatNumber(parseNumber(current)) : current) + ' ' + ({kwh: 'kWh', litres: 'litres', m3: 'm³'}[state.answers.unit] || '') : displayFact(key, current))}. Select this detail to replace it.</p>` : ''}
           ${key === 'consumption_full_year' ? '<p class="existing-answer">Applies only with the energy use from this bill.</p>' : ''}
-          <details class="fact-evidence"><summary>See where this came from</summary><p>${escape(f.source_file)}</p><blockquote>${escape(f.evidence)}</blockquote></details></article>`;
+          <details class="fact-evidence"><summary>See where this came from</summary><p>${escape(f.source_file)}${f.page ? ` · page ${f.page}` : ''}</p>${periodText(f.billing) ? `<p>${escape(periodText(f.billing))}</p>` : ''}<blockquote>${escape(f.evidence)}</blockquote></details></article>`;
       }).join('')}
       ${result.warnings.length ? `<details class="review-warnings"><summary>A few things we couldn’t confirm (${result.warnings.length})</summary><ul>${result.warnings.map(w => `<li>${escape(w)}</li>`).join('')}</ul></details>` : ''}
-      <div class="extraction-actions">${facts.length ? '<button type="button" class="button primary" data-apply-extraction>Use selected details</button>' : ''}<button type="button" class="back-button" data-new-files>Try different files</button></div></div>` : ''}
-    </section>`;
+      <div class="extraction-actions">${facts.length || result.conflicts?.length ? '<button type="button" class="button primary" data-apply-extraction>Use reviewed details</button>' : ''}<button type="button" class="back-button" data-new-files>Try different files</button></div></div>` : ''}
+    ${result?.metrics ? `<p class="extraction-metrics" role="status">${result.metrics.total_documents} ${result.metrics.total_documents === 1 ? 'file' : 'files'} in your evidence history · ${result.metrics.files_read} newly read · ${result.metrics.cached_files} reused${result.metrics.api_calls === 0 ? ' · No new AI request needed' : ''}</p>${result.metrics.remaining_files ? '<button type="button" class="button secondary" data-read-remaining>Read remaining files</button>' : ''}` : ''}
+    ${historyPanel()}</section>`;
 }
 function helperPrompt() {
   const count = reviewedEvidence().length;
   const prompt = state.step === 2 ? (state.answers.heat_distribution !== 'unknown' ? 'Your heating details are below. Check what’s here and add anything you know.' : 'Do you heat your rooms with radiators, underfloor heating, or both?') : state.step === 3 ? (state.answers.amount ? 'Your energy use is filled in. Check the period, then tell us how many people live at home.' : 'A full year of heating energy helps us estimate what your home needs.') : 'Check the answers below. You can change anything before the assessment.';
   return `<div class="helper-prompt"><span class="assistant-icon">${sparkle}</span><div><strong>${count ? `${count} ${count === 1 ? 'detail carried' : 'details carried'} over from your files` : 'A little help along the way'}</strong><p>${prompt}</p></div></div>`;
 }
+function evidencePayload() { return { ...Object.fromEntries(reviewedEvidence()), _reviews: state.evidenceReviews || {} }; }
 function reviewedEvidence() {
   return Object.entries(state.evidence || {}).filter(([key, f]) => values()[key] === f.value);
 }
@@ -157,7 +181,7 @@ function reviewGroup(title, step, rows) {
 }
 function review() {
   const a = state.answers;
-  return `${evidenceSummary()}${state.sample ? `<div class="sample-notice">Example home ${escape(a.building_id)}. These are anonymised project details. You can change any answer.</div>` : ''}${reviewGroup('Your home', 1, [['Heated area', answer('floor_area_m2', ' m²')], ['Year built', answer('construction_year')], ['Insulation improvements', answer('renovation_status')]])}${reviewGroup('Your heating', 2, [['Energy source', answer('energy_carrier')], ['Room heating', answer('heat_distribution')], ['Radiators', answer('radiator_count')], ['Radiator type', answer('radiator_type')]])}${reviewGroup('Your energy use', 3, [['Energy used', answer('amount', ' ' + ({ kwh: 'kWh', litres: 'litres', m3: 'm³' }[a.unit]))], ['Covers a full year', answer('consumption_full_year')], ['People at home', answer('persons_in_household')], ['Hot water from heating', answer('hot_water_via_heating')], ['Water temperature', answer('flow_temperature_c', ' °C')], ['Pipe layout', answer('pipe_system')], ['Another heat source', answer('other_heat_source')], ['Solar hot water', answer('solar_thermal')], ...(a.building_notes ? [['Your notes', escape(a.building_notes)]] : [])])}<p class="review-reassurance">An unanswered question is okay. We’ll explain where more information would help.</p>`;
+  return `${evidenceSummary()}${historyPanel()}${state.sample ? `<div class="sample-notice">Example home ${escape(a.building_id)}. These are anonymised project details. You can change any answer.</div>` : ''}${reviewGroup('Your home', 1, [['Heated area', answer('floor_area_m2', ' m²')], ['Year built', answer('construction_year')], ['Insulation improvements', answer('renovation_status')]])}${reviewGroup('Your heating', 2, [['Energy source', answer('energy_carrier')], ['Room heating', answer('heat_distribution')], ['Radiators', answer('radiator_count')], ['Radiator type', answer('radiator_type')]])}${reviewGroup('Your energy use', 3, [['Energy used', answer('amount', ' ' + ({ kwh: 'kWh', litres: 'litres', m3: 'm³' }[a.unit]))], ['Covers a full year', answer('consumption_full_year')], ['People at home', answer('persons_in_household')], ['Hot water from heating', answer('hot_water_via_heating')], ['Water temperature', answer('flow_temperature_c', ' °C')], ['Pipe layout', answer('pipe_system')], ['Another heat source', answer('other_heat_source')], ['Solar hot water', answer('solar_thermal')], ...(a.building_notes ? [['Your notes', escape(a.building_notes)]] : [])])}<p class="review-reassurance">An unanswered question is okay. We’ll explain where more information would help.</p>`;
 }
 function formPage() {
   const titles = ['Your home check starts here.', 'How do you keep your home warm?', 'A little about your energy use.', 'Does everything look right?'];
@@ -297,7 +321,7 @@ const yesNo = v => (v ? 'yes' : 'no');
 const INPUTS = [ // [processed step, field, from reference_data, label, format], one column per engine step
   [['01a_heat_load_by_area', 'floor_area_m2', false, 'Floor area', v => `${formatNumber(v)} m²`], ['01a_heat_load_by_area', 'construction_year', false, 'Built', String],
     ['01a_heat_load_by_area', 'renovation_status', false, 'Renovation', String], ['01a_heat_load_by_area', 'unheated_area', false, 'Unheated area', String],
-    ['01b_heat_load_by_consumption', 'annual_consumption_kwh', false, 'Energy used', v => `${formatNumber(v)} kWh/year`], ['01b_heat_load_by_consumption', 'energy_carrier', false, 'Fuel', v => labels.energy_carrier[v] || v],
+    ['01b_heat_load_by_consumption', 'annual_consumption_kwh', false, 'Energy used', v => `${formatNumber(v)} kWh`], ['01b_heat_load_by_consumption', 'energy_carrier', false, 'Fuel', v => labels.energy_carrier[v] || v],
     ['01b_heat_load_by_consumption', 'persons_in_household', false, 'People', String], ['01b_heat_load_by_consumption', 'hot_water_via_heating', false, 'Hot water from boiler', yesNo]],
   [['02_radiator_check', 'heat_distribution', false, 'Heating', v => labels.heat_distribution[v] || v], ['02_radiator_check', 'radiator_count', false, 'Radiators', String],
     ['02_radiator_check', 'radiator_type', false, 'Radiator type', v => `type ${v}`, '11, 22 and 33 all tried'], ['02_radiator_check', 'radiator_size_mm', false, 'Radiator size', v => v.join(' × ') + ' mm', '600 × 1000 mm assumed']],
@@ -325,7 +349,7 @@ function costBars(cost, fuel) {
 // Starts the assessment for the current answers if needed; true once its result is ready.
 function ensureAssessment() {
   if (!sampleUnchanged()) customerId();
-  const input = { ...toCustomerInput(values()), extraction_evidence: Object.fromEntries(reviewedEvidence()) }, key = sampleUnchanged() ? `demo:${state.answers.building_id}` : JSON.stringify(input);
+  const input = { ...toCustomerInput(values()), extraction_evidence: evidencePayload() }, key = sampleUnchanged() ? `demo:${state.answers.building_id}` : JSON.stringify(input);
   if (assessment.key !== key) {
     if (state.confirmKey !== key) { state.confirm = {}; state.confirmKey = key; whatIf = { processed: null }; save(); }
     runAssessment(key, input);
@@ -447,6 +471,7 @@ function customerView(p, o) {
       <p class="cv-saving">${cost.saving ? `<strong>${euros(cost.saving)}</strong> saved per year` : d.verdict === 'red' ? 'Saving: estimated once the heating water can stay at or below 60 °C' : 'Saving: more information needed'}</p></div>
     <p class="cv-text">${escape(customerParagraph(p, o))}</p>
     ${savingChart(o, fuel)}
+    ${followUpPanel()}
     <section class="cv-suggestions ${v.cls}"><h2>${s.title}</h2>${body}</section>
     <div class="result-actions"><button class="button ${s.options ? 'secondary' : 'primary'}" data-go="6">Check and complete my details ${chevron}</button></div></div>`;
 }
@@ -491,9 +516,10 @@ function confirmPage() {
     if (!f) return '';
     const entry = state.confirm[key], value = entry ? entry.value : initialValue(f, type);
     const missing = f.value === null || (key === 'unheated_area' && typeof f.value === 'string');
+    const nonAnnual = key === 'annual_consumption_kwh' && state.answers.consumption_full_year !== 'yes';
     const evidence = f.evidence && !['self-reported', 'not asked', 'not provided', String(f.value)].includes(f.evidence) ? `<p class="rp-evidence">“${escape(f.evidence)}”</p>` : '';
-    return `<div class="cf-row ${missing ? 'missing' : ''}"><div class="cf-label"><label for="cf-${key}">${label}</label>${evidence}${missing ? '<p class="cf-missing">Open — add it if you know it</p>' : ''}</div>`
-      + `<div class="cf-control">${confirmControl(key, type, extra, value)}</div><label class="cf-ok"><input type="checkbox" name="ok:${key}" ${entry?.ok ? 'checked' : ''}> Correct</label></div>`;
+    return `<div class="cf-row ${missing ? 'missing' : ''}"><div class="cf-label"><label for="cf-${key}">${label}</label>${evidence}${nonAnnual ? '<p class="cf-missing">This bill is not confirmed as a full year. Update the billing period in your energy-use answers before confirming annual demand.</p>' : ''}${missing ? '<p class="cf-missing">Open — add it if you know it</p>' : ''}</div>`
+      + `<div class="cf-control">${confirmControl(key, type, extra, value)}</div><label class="cf-ok"><input type="checkbox" name="ok:${key}" ${nonAnnual ? 'disabled' : entry?.ok ? 'checked' : ''}> Correct</label></div>`;
   }).join('')}</section>`).join('');
   return `<main id="main" class="flow-main cf"><div class="result-topline"><button class="back-button" data-go="5">← Back to my result</button><span>CONFIRM YOUR DETAILS</span></div>
     <h1 id="page-title" tabindex="-1">Check and complete your details.</h1><p class="intro">Tick what is right, correct what isn’t, and add what you know. Anything still open is explored with sliders on the next page.</p>
@@ -510,6 +536,7 @@ function confirmedProcessed() {
     for (const step of Object.values(p)) {
       const f = step.fields[key];
       if (!f) continue;
+      if (key === 'annual_consumption_kwh' && state.answers.consumption_full_year !== 'yes') continue;
       if (v === undefined) { if (f.value !== null) step.fields[key] = { ...f, confidence: 'high', source: 'homeowner.confirmed' }; }
       else step.fields[key] = { value: v, source: 'homeowner.confirmed', confidence: v === null ? 'low' : 'high', evidence: 'confirmed by the homeowner', ...(key === 'radiator_type' && v === null ? { alternatives: ['11', '22', '33'] } : {}) };
     }
@@ -648,14 +675,14 @@ function customerId() {
 async function saveFiles(files) {
   const id = customerId();
   uploadSave = { status: 'saving', customerId: id };
-  try { uploadSave = { status: 'saved', customerId: id, paths: (await uploadFiles(id, files)).saved }; }
+  try { const saved = await uploadFiles(id, files); uploadSave = { status: 'saved', customerId: id, paths: saved.saved, duplicates: saved.duplicates || 0 }; }
   catch (error) { uploadSave = { status: 'error', customerId: id, error: error.message }; }
   if (state.step === 1) render();
   announce(uploadSave.status === 'saved' ? `Files saved to customer folder ${id}.` : `The files could not be saved. ${uploadSave.error}`);
 }
 function chooseFiles(files) {
   if (extraction.status === 'loading') return;
-  try { validateFiles(files); chosenFiles = files; extraction = { status: 'idle', result: null, error: '' }; saveFiles(files); }
+  try { validateFiles(files); chosenFiles = files; extraction = { status: 'idle', result: null, error: '' }; uploadPromise = saveFiles(files); }
   catch (error) { extraction = { status: 'error', result: null, error: error.message }; }
   render(); document.querySelector(extraction.error ? '#evidence-files' : '[data-extract]')?.focus();
   announce(extraction.error || `${chosenFiles.length} ${chosenFiles.length === 1 ? 'file ready' : 'files ready'}. Choose Find my home details to continue.`);
@@ -685,8 +712,20 @@ app.addEventListener('submit', event => {
 app.addEventListener('click', async event => {
   const button = event.target.closest('button'); if (!button) return;
   if (button.hasAttribute('data-start-ai') || button.hasAttribute('data-add-evidence')) {
+    if (assessment.data?.follow_up?.id.startsWith('conflict:') && state.evidenceLedger) extraction = { status: 'done', result: state.evidenceLedger, error: '' };
     homeDetailsOpen = false; returnToReview = false; editSnapshot = null; setStep(1);
   }
+  if (button.hasAttribute('data-answer-followup')) {
+    const question = assessment.data?.follow_up;
+    if (question) {
+      if (question.id.startsWith('conflict:') && state.evidenceLedger) extraction = { status: 'done', result: state.evidenceLedger, error: '' };
+      homeDetailsOpen = true; setStep(question.step);
+      const target = document.getElementById(question.target) || document.querySelector(`[name="${question.target}"]`);
+      if (target?.closest('details')) target.closest('details').open = true;
+      target?.focus(); target?.scrollIntoView({block: 'center'});
+    }
+  }
+  if (button.hasAttribute('data-skip-followup')) { state.skippedQuestion = `${assessment.key}:${assessment.data.follow_up.id}`; save(); render(); announce('This detail stays open for a professional to check.'); }
   if (button.hasAttribute('data-start-manual')) { homeDetailsOpen = true; setStep(1); document.querySelector('#manual-home-details')?.scrollIntoView({ block: 'start' }); }
   if (button.hasAttribute('data-manual-details')) {
     homeDetailsOpen = true; const details = document.querySelector('#manual-home-details');
@@ -697,14 +736,18 @@ app.addEventListener('click', async event => {
     chosenFiles.splice(Number(button.dataset.removeFile), 1); extraction.error = ''; render(); document.querySelector('#evidence-files')?.focus();
   }
   if (button.hasAttribute('data-cancel-extraction')) { uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; homeDetailsOpen = true; render(); announce('You can continue with the questions.'); }
-  if (button.hasAttribute('data-extract')) {
-    const files = [...chosenFiles];
+  if (button.hasAttribute('data-extract') || button.hasAttribute('data-read-remaining')) {
+    const files = button.hasAttribute('data-read-remaining') ? [] : [...chosenFiles];
     const generation = ++uploadGeneration;
     extraction = { status: 'loading', result: null, error: '' }; render();
     try {
-      const result = await extractFiles(files, { customer_id: customerId(), questionnaire: toCustomerInput(values()) });
+      await uploadPromise;
+      if (generation !== uploadGeneration) return;
+      if (uploadSave?.status === 'error') throw new Error(uploadSave.error);
+      const result = await extractFiles(files, { customer_id: customerId(), questionnaire: { ...toCustomerInput(values()), extraction_evidence: evidencePayload() } });
       if (generation !== uploadGeneration) return;
       extraction = { status: 'done', result, error: '' };
+      state.evidenceLedger = result; save();
     } catch (error) {
       if (generation !== uploadGeneration) return;
       extraction = { status: 'error', result: null, error: error.message || 'Extraction unavailable. Enter your answers manually.' };
@@ -713,14 +756,23 @@ app.addEventListener('click', async event => {
     announce(extraction.status === 'done' ? 'Extraction ready. Review the facts before using them.' : extraction.error);
   }
   if (button.hasAttribute('data-apply-extraction')) {
-    const selected = [...document.querySelectorAll('[data-extracted-key]:checked')].map(el => el.dataset.extractedKey);
-    if (!selected.length) { announce('Select at least one detail to use, or continue with the questions below.'); return; }
-    state.answers = applyFields(state.answers, extraction.result.fields, selected);
+    const checked = [...document.querySelectorAll('[data-extracted-key]:checked')].map(el => el.dataset.extractedKey);
+    const selections = Object.fromEntries([...document.querySelectorAll('[name^="conflict:"]:checked')].map(el => [el.name.slice(9), el.value]));
+    let reviewed;
+    try { reviewed = resolveReview(extraction.result, selections, toCustomerInput(values()), checked); }
+    catch (error) { const el = document.querySelector('#conflict-error'); if (el) el.textContent = error.message; announce(error.message); return; }
+    const { fields, selected, reviews } = reviewed;
+    if (!selected.length && !Object.keys(reviews).length) { announce('Select a detail to use, or continue with the questions.'); return; }
+    state.answers = clearUnknownAnswers(applyFields(state.answers, fields, selected), reviews);
     const normalized = values();
-    state.evidence ||= {};
+    state.evidence ||= {}; state.evidenceReviews ||= {};
+    for (const [key, review] of Object.entries(reviews)) {
+      state.evidenceReviews[key] = { ...review, value: normalized[key] ?? null };
+      if (['answer', 'unknown'].includes(review.selected_id)) delete state.evidence[key];
+    }
     for (const key of selected) {
       if (key === 'consumption_full_year' && !selected.includes('annual_consumption_kwh')) continue;
-      state.evidence[key] = { ...extraction.result.fields[key], value: normalized[key] };
+      state.evidence[key] = { ...fields[key], value: normalized[key] };
     }
     addedCount = selected.filter(k => k !== 'consumption_full_year' || selected.includes('annual_consumption_kwh')).length; chosenFiles = [];
     extraction = { status: 'idle', result: null, error: '' };
@@ -737,6 +789,7 @@ app.addEventListener('click', async event => {
   if (button.hasAttribute('data-retry-assess')) { assessment = { key: null, status: 'idle', data: null }; render(); }
   if (button.hasAttribute('data-approve-all')) {
     for (const [, rows] of CONFIRM) for (const [key, , type] of rows) {
+      if (key === 'annual_consumption_kwh' && state.answers.consumption_full_year !== 'yes') continue;
       const f = findField(assessment.data.processed, key);
       if (f && f.value !== null) (state.confirm[key] ||= { value: initialValue(f, type), ok: false }).ok = true;
     }
@@ -753,7 +806,7 @@ app.addEventListener('click', async event => {
   }
   if (button.hasAttribute('data-reset')) document.querySelector('#reset-dialog').showModal();
   if (button.hasAttribute('data-cancel-reset')) document.querySelector('#reset-dialog').close();
-  if (button.hasAttribute('data-confirm-reset')) { state.answers = empty(); state.sample = false; state.sampleAnswers = null; state.evidence = {}; chosenFiles = []; uploadSave = null; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; returnToReview = false; setStep(0); announce('Your answers have been cleared.'); }
+  if (button.hasAttribute('data-confirm-reset')) { state.answers = empty(); state.sample = false; state.sampleAnswers = null; state.evidence = {}; state.evidenceReviews = {}; state.evidenceLedger = null; chosenFiles = []; uploadSave = null; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; returnToReview = false; setStep(0); announce('Your answers have been cleared.'); }
   if (button.hasAttribute('data-print')) window.print();
   if (button.hasAttribute('data-download')) downloadSummary();
 });
@@ -784,7 +837,7 @@ function loadSample(id) {
   a.other_heat_source = /wood stove/i.test(sample.building_notes) ? 'yes' : 'unknown';
   a.solar_thermal = /solar thermal/i.test(sample.building_notes) ? 'yes' : 'unknown';
   a.building_notes = [sample.building_notes, sample.radiator_info].filter(Boolean).join('\n\n');
-  state.answers = a; state.sample = true; state.sampleAnswers = JSON.stringify(a); state.evidence = {}; chosenFiles = []; uploadSave = null; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; setStep(4); announce(`Example home ${id} loaded. Review the answers before continuing.`);
+  state.answers = a; state.sample = true; state.sampleAnswers = JSON.stringify(a); state.evidence = {}; state.evidenceReviews = {}; state.evidenceLedger = null; chosenFiles = []; uploadSave = null; addedCount = 0; homeDetailsOpen = false; uploadGeneration++; extraction = { status: 'idle', result: null, error: '' }; setStep(4); announce(`Example home ${id} loaded. Review the answers before continuing.`);
 }
 async function loadSamples() {
   try {

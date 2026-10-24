@@ -1,0 +1,34 @@
+[
+  {
+    "id": "combined_utilities",
+    "file": "data/raw/energy_bills/swm_musterrechnung_strom_erdgas_original.pdf",
+    "type": "application/pdf",
+    "expected_fields": {
+      "energy_carrier": "gas",
+      "annual_consumption_kwh": 12945,
+      "consumption_full_year": false,
+      "construction_year": null,
+      "floor_area_m2": null,
+      "persons_in_household": null,
+      "solar_thermal": null,
+      "other_heat_source": null,
+      "hot_water_via_heating": null
+    },
+    "notes": "Manually checked page 2 table: current gas 12,945 kWh, previous gas 11,941; current electricity 5,283; period labelled 390 days. No home size/year/occupants documented. Existing regex-derived labels are deliberately not used.",
+    "sha256": "8deee6797d84131cf1bf7bb5ae03015d199831a524de1dcaf7f1542df3fd6697"
+  },
+  {
+    "id": "ambiguous_connection",
+    "file": "data/raw/pipe_system_photos/10_unklar_h-block-simplex.jpeg",
+    "type": "image/jpeg",
+    "expected_fields": {
+      "pipe_system": null,
+      "radiator_count": null,
+      "construction_year": null,
+      "floor_area_m2": null,
+      "flow_temperature_c": null
+    },
+    "notes": "Manually inspected radiator connection close-up. Does not establish hydraulic layout, whole-house count, dimensions or cold-day flow temperature.",
+    "sha256": "bce204a9319b2af2673b5f04a047e25b36cc4f52844e4d35d81b7674253b7497"
+  }
+]

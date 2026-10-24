@@ -9,7 +9,12 @@ export const fieldLabels = {
   consumption_full_year: 'Consumption covers a full year', hot_water_via_heating: 'Hot water from heating',
   other_heat_source: 'Another heat source', solar_thermal: 'Solar hot water', building_notes: 'Documented observations',
 };
+const payloadCache = new WeakMap();
 export function filePayload(file) {
+  if (!payloadCache.has(file)) payloadCache.set(file, readPayload(file));
+  return payloadCache.get(file);
+}
+function readPayload(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('The file could not be read. Please choose it again.'));
@@ -26,7 +31,7 @@ export function validateFiles(files) {
 // context {customer_id, questionnaire}: the server sends the questionnaire and the customer's saved files to the LLM
 // and keeps the result in the customer folder (intake rule, docs/data-contract.md).
 export async function extractFiles(files, context = {}) {
-  validateFiles(files);
+  if (files.length || !context.customer_id) validateFiles(files);
   const payload = await Promise.all(files.map(filePayload));
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 100000);
   try {
@@ -50,7 +55,7 @@ export function applyFields(answers, fields, selected) {
       // Consumption and its period must travel together, never retain a previous annual flag.
       next.consumption_full_year = 'unknown';
     } else if (key === 'building_notes') {
-      next.building_notes = [next.building_notes, String(value)].filter(Boolean).join('\n\n').slice(0, 3000);
+      next.building_notes = [...new Set([...(next.building_notes || '').split('\n\n'), ...String(value).split('\n\n')].filter(Boolean))].join('\n\n').slice(0, 3000);
     } else {
       next[key] = typeof value === 'boolean' ? (value ? 'yes' : 'no') : String(value);
     }

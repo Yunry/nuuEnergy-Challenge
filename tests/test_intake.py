@@ -75,6 +75,7 @@ class Pipeline(unittest.TestCase):
             for f in {**step["fields"], **step["reference_data"]}.values():
                 self.assertLessEqual(intake.UNIFORM_FIELD_KEYS, set(f))
         self.assertEqual(steps["02_radiator_check"]["fields"]["radiator_count"]["source"], "confirmed_upload.protocol.pdf")
+        self.assertEqual(steps["02_radiator_check"]["fields"]["radiator_count"]["confidence"], "high")
 
     def test_extraction_gets_the_questionnaire_and_saved_files_and_is_kept(self):
         (self.folder / "raw" / "documents").mkdir(parents=True)

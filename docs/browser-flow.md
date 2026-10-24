@@ -134,3 +134,28 @@ After confirmation, a success message and **From your file** badges connect extr
 to editable answers. A helper note carries that context through later steps. The result page
 has a direct **Add a bill or photo** action to resolve missing information without resetting
 existing answers. The manual home questions remain available in an expandable section.
+
+
+## Incremental extraction and verification
+
+New uploads are saved before extraction starts. The helper compares all previously extracted file
+observations, shows competing readings together, and keeps a source history. “Use reviewed details”
+requires an explicit choice for each disagreement, including “Leave this unknown”. Only selected facts
+change the editable answers. An answered conflict reopens if new competing evidence arrives.
+
+Duplicate file bytes are saved once and reuse their extraction. The helper reports newly read and reused
+files; if more than three files await extraction, “Read remaining files” continues without discarding
+older results. Page evidence and original billing periods/units are expandable. Partial-year bills
+remain unusable as annual demand. A targeted next question offers upload, manual entry and “I don’t know”.
+
+`python3 scripts/evaluate_extraction.py` lists the small, manually checked public regression set.
+Add `--live` to make one paid OpenAI request per case, optionally `--case <id>` or `--model <model>`.
+The CLI checks file hashes, compares expected fields, reports latency/token counts and exits nonzero on
+a mismatch. Labels never enter the model prompt. The two cases cover combined electricity/gas bills,
+current versus previous consumption and an ambiguous radiator connection. This is a regression set,
+not a claim of broad model accuracy. Older filename/regex-derived bill labels are not used as truth.
+
+The automated suite exercises cumulative uploads, duplicate bytes, cache hits, failures/retries,
+contradictory values, different bill years, invalid dates, unit/fuel mismatches and explicit review
+choices independently of engine verdict labels. Raw image compression and model upgrades are deferred
+until a larger verified extraction set can measure loss of detail and field accuracy.
