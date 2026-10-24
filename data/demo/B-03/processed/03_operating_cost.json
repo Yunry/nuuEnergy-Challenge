@@ -3,7 +3,6 @@
   "building_id": "B-03",
   "step": "03_operating_cost",
   "depends_on": [
-    "output/01_heat_load.json",
     "output/02_radiator_check.json"
   ],
   "raw_inputs": [
@@ -25,12 +24,6 @@
       "source": "customer_input.energy_carrier",
       "confidence": "high",
       "evidence": "oil"
-    },
-    "persons_in_household": {
-      "value": 2,
-      "source": "customer_input.persons_in_household",
-      "confidence": "high",
-      "evidence": "2"
     },
     "hot_water_via_heating": {
       "value": true,
